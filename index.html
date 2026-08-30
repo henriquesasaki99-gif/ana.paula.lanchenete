@@ -325,6 +325,9 @@
       </div>
 
       <div class="spacer"></div>
+      <div id="preorderSuccess" style="display:none;padding:12px 14px;border-radius:10px;background:#dcfce7;border:1px solid #86efac;color:#166534;font-weight:700"></div>
+
+      <div class="spacer"></div>
       <div class="grid">
         <div class="card metric"><div class="label">Em preparação</div><div class="value" id="kitchenPreparing">0</div></div>
         <div class="card metric"><div class="label">Prontos</div><div class="value" id="kitchenReady">0</div></div>
@@ -648,7 +651,10 @@ function updateOrderChange(){
 
 function finishSavedOrder(){
   const o=db.kitchenOrders.find(x=>x.id===currentKitchenOrderId && x.status!=='finalizado');
-  if(!o){alert('Selecione uma comanda ou encomenda aberta.');return}
+  if(!o){
+    alert('Selecione uma comanda ou encomenda aberta.');
+    return;
+  }
 
   for(const i of (o.items||[])){
     const p=db.products.find(x=>x.id===i.productId);
@@ -658,17 +664,26 @@ function finishSavedOrder(){
     }
   }
 
+  const paymentEl=document.getElementById('orderPayment');
+  const paidEl=document.getElementById('orderPaid');
+
   const total=Number(o.total||0);
-  const payment=orderPayment.value;
+  const payment=paymentEl?.value||'Dinheiro';
   let paid=total,change=0;
 
   if(payment==='Dinheiro'){
-    paid=Number(orderPaid.value);
-    if(!(paid>=total)){alert(`O valor pago é menor que o total da venda (${money(total)}).`);return}
+    paid=Number(paidEl?.value||0);
+    if(!(paid>=total)){
+      alert(`O valor pago é menor que o total da venda (${money(total)}).`);
+      return;
+    }
     change=paid-total;
   }
 
-  (o.items||[]).forEach(i=>{db.products.find(x=>x.id===i.productId).storeQty-=i.qty});
+  (o.items||[]).forEach(i=>{
+    const p=db.products.find(x=>x.id===i.productId);
+    if(p)p.storeQty-=i.qty;
+  });
 
   const sale={
     id:uid(),
@@ -691,7 +706,8 @@ function finishSavedOrder(){
   o.finalizedAt=new Date().toISOString();
   o.saleId=sale.id;
   currentKitchenOrderId='';
-  orderPaid.value='';
+
+  if(paidEl)paidEl.value='';
   saveDB();
   renderSelectedOrder();
 
@@ -777,61 +793,120 @@ function renderPreorderCart(){
 }
 
 function savePreorder(){
-  if(!preorderCart.length){alert('Adicione os produtos da pré-venda.');return}
-  const customer=preCustomer.value.trim();
-  if(!customer){alert('Informe o nome do cliente.');return}
+  const customerEl=document.getElementById('preCustomer');
+  const tableEl=document.getElementById('preTable');
+  const phoneEl=document.getElementById('prePhone');
+  const addressEl=document.getElementById('preAddress');
+  const additionalEl=document.getElementById('preAdditional');
+  const notesEl=document.getElementById('preNotes');
 
-  if(preorderType==='mesa'){
-    if(!preTable.value.trim()){alert('Informe a mesa ou identificação da comanda.');return}
-  }else{
-    if(!prePhone.value.trim()||!preAddress.value.trim()||!preAdditional.value.trim()){
-      alert('Na encomenda são obrigatórios telefone, endereço completo e informações adicionais.');
-      return;
-    }
+  if(!preorderCart.length){
+    alert('Adicione os produtos da pré-venda.');
+    return;
+  }
+
+  const customer=(customerEl?.value||'').trim();
+  if(!customer){
+    alert('Informe o nome do cliente.');
+    customerEl?.focus();
+    return;
+  }
+
+  const table=(tableEl?.value||'').trim();
+  const phone=(phoneEl?.value||'').trim();
+  const address=(addressEl?.value||'').trim();
+  const additional=(additionalEl?.value||'').trim();
+  const notes=(notesEl?.value||'').trim();
+
+  if(preorderType==='mesa' && !table){
+    alert('Informe a mesa ou identificação da comanda.');
+    tableEl?.focus();
+    return;
+  }
+
+  if(preorderType==='encomenda' && (!phone || !address || !additional)){
+    alert('Na encomenda são obrigatórios telefone, endereço completo e informações adicionais.');
+    return;
   }
 
   const payload={
     customer,
     type:preorderType==='encomenda'?'encomenda':'mesa',
-    table:preorderType==='mesa'?preTable.value.trim():'',
-    phone:preorderType==='encomenda'?prePhone.value.trim():'',
-    address:preorderType==='encomenda'?preAddress.value.trim():'',
-    additional:preorderType==='encomenda'?preAdditional.value.trim():'',
-    notes:preNotes.value.trim(),
+    table:preorderType==='mesa'?table:'',
+    phone:preorderType==='encomenda'?phone:'',
+    address:preorderType==='encomenda'?address:'',
+    additional:preorderType==='encomenda'?additional:'',
+    notes,
     items:preorderCart.map(i=>({...i})),
     total:preorderCart.reduce((s,i)=>s+i.qty*i.price,0),
     status:'preparo',
     sentAt:new Date().toISOString()
   };
 
+  let savedOrder;
+
   if(editingPreorderId){
-    const o=db.kitchenOrders.find(x=>x.id===editingPreorderId&&x.status!=='finalizado');
-    if(o)Object.assign(o,payload);
+    savedOrder=db.kitchenOrders.find(x=>x.id===editingPreorderId && x.status!=='finalizado');
+    if(!savedOrder){
+      alert('Não foi possível localizar a comanda que estava sendo editada.');
+      return;
+    }
+    Object.assign(savedOrder,payload);
   }else{
-    db.kitchenOrders.push({
+    savedOrder={
       id:uid(),
       number:(db.kitchenOrders.length+1).toString().padStart(4,'0'),
       ...payload
-    });
+    };
+    db.kitchenOrders.push(savedOrder);
   }
 
-  saveDB();
+  try{
+    localStorage.setItem(LS_KEY,JSON.stringify(db));
+  }catch(e){
+    alert('Não foi possível salvar a pré-venda neste navegador.');
+    return;
+  }
+
+  const savedName=savedOrder.customer;
+  const savedNumber=savedOrder.number;
+  const savedType=savedOrder.type==='encomenda'?'Encomenda':(savedOrder.table||'Mesa / Comanda');
+
   resetPreorder();
-  alert(`Pré-venda de ${customer} salva e enviada para preparação.`);
+  renderAll();
+
+  const success=document.getElementById('preorderSuccess');
+  if(success){
+    success.textContent=`✓ Pré-venda salva: ${savedName} — ${savedType} — #${savedNumber}. Ela já está disponível no PDV em "Fechar Comanda / Encomenda".`;
+    success.style.display='block';
+  }
+
+  const list=document.getElementById('kitchenOrders');
+  if(list) list.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 function editPreorder(id){
-  const o=db.kitchenOrders.find(x=>x.id===id&&x.status!=='finalizado');
+  const o=db.kitchenOrders.find(x=>x.id===id && x.status!=='finalizado');
   if(!o)return;
+
   editingPreorderId=o.id;
   preorderType=o.type==='encomenda'?'encomenda':'mesa';
   preorderCart=(o.items||[]).map(i=>({...i}));
-  preCustomer.value=o.customer||'';
-  preTable.value=o.table||'';
-  prePhone.value=o.phone||'';
-  preAddress.value=o.address||'';
-  preAdditional.value=o.additional||'';
-  preNotes.value=o.notes||'';
+
+  const customerEl=document.getElementById('preCustomer');
+  const tableEl=document.getElementById('preTable');
+  const phoneEl=document.getElementById('prePhone');
+  const addressEl=document.getElementById('preAddress');
+  const additionalEl=document.getElementById('preAdditional');
+  const notesEl=document.getElementById('preNotes');
+
+  if(customerEl)customerEl.value=o.customer||'';
+  if(tableEl)tableEl.value=o.table||'';
+  if(phoneEl)phoneEl.value=o.phone||'';
+  if(addressEl)addressEl.value=o.address||'';
+  if(additionalEl)additionalEl.value=o.additional||'';
+  if(notesEl)notesEl.value=o.notes||'';
+
   updatePreorderTypeUI();
   renderPreorderCart();
   window.scrollTo({top:0,behavior:'smooth'});
@@ -1014,19 +1089,29 @@ function finishSale(){
     alert('Comandas e encomendas devem ser criadas em Cozinha / Comandas e apenas finalizadas aqui.');
     return;
   }
-  if(!cart.length){alert('Adicione itens ao carrinho.');return}
+  if(!cart.length){
+    alert('Adicione itens ao carrinho.');
+    return;
+  }
 
   for(const i of cart){
     const p=db.products.find(x=>x.id===i.productId);
-    if(!p||p.storeQty<i.qty){alert(`Estoque insuficiente para ${i.name}.`);return}
+    if(!p||p.storeQty<i.qty){
+      alert(`Estoque insuficiente para ${i.name}.`);
+      return;
+    }
   }
 
+  const customerEl=document.getElementById('saleCustomer');
+  const paymentEl=document.getElementById('salePayment');
+  const paidEl=document.getElementById('salePaid');
+
   const total=cart.reduce((s,i)=>s+i.qty*i.price,0);
-  const payment=salePayment.value;
+  const payment=paymentEl?.value||'Dinheiro';
   let paid=total,change=0;
 
   if(payment==='Dinheiro'){
-    paid=Number(salePaid.value);
+    paid=Number(paidEl?.value||0);
     if(!(paid>=total)){
       alert(`O valor pago é menor que o total da venda (${money(total)}).`);
       return;
@@ -1034,13 +1119,16 @@ function finishSale(){
     change=paid-total;
   }
 
-  cart.forEach(i=>{db.products.find(x=>x.id===i.productId).storeQty-=i.qty});
+  cart.forEach(i=>{
+    const p=db.products.find(x=>x.id===i.productId);
+    if(p)p.storeQty-=i.qty;
+  });
 
   const sale={
     id:uid(),
     number:(db.sales.length+1).toString().padStart(5,'0'),
     date:new Date().toISOString(),
-    customer:saleCustomer.value.trim(),
+    customer:(customerEl?.value||'').trim(),
     saleType:'balcao',
     phone:'',
     address:'',
@@ -1054,8 +1142,8 @@ function finishSale(){
 
   db.sales.push(sale);
   cart=[];
-  saleCustomer.value='';
-  salePaid.value='';
+  if(customerEl)customerEl.value='';
+  if(paidEl)paidEl.value='';
   saveDB();
 
   alert(`Venda ${sale.number} finalizada.\nTotal: ${money(total)}${payment==='Dinheiro'?`\nTroco: ${money(change)}`:''}`);
