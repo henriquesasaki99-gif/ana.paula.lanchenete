@@ -47,7 +47,7 @@
     .muted{color:var(--muted);font-size:12px}.spacer{height:14px}
     .notice{padding:11px 12px;border-radius:9px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:13px}
     .right{text-align:right}
-    .pdv-layout{display:grid;grid-template-columns:1.35fr .85fr;gap:16px;align-items:start}
+    .pdv-layout{display:grid;grid-template-columns:.85fr 1.35fr;gap:16px;align-items:start}
     .product-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
     .product-btn{border:1px solid var(--line);background:#fff;border-radius:14px;padding:14px;text-align:left;cursor:pointer;min-height:112px;display:flex;flex-direction:column;justify-content:space-between;transition:.15s}
     .product-btn:hover{transform:translateY(-1px);border-color:#fdba74;box-shadow:0 5px 14px rgba(249,115,22,.10)}
@@ -78,6 +78,25 @@
     .locked-cart{background:#f9fafb;border:1px dashed #d1d5db;border-radius:10px;padding:10px}
     .preorder-layout{display:grid;grid-template-columns:1.25fr .75fr;gap:16px;align-items:start}
     .preorder-side{position:sticky;top:20px}
+    .order-close-layout{display:grid;grid-template-columns:.9fr 1.1fr;gap:16px;align-items:start}
+    .order-preview-list{display:flex;flex-direction:column;gap:10px}
+    .order-preview-card{width:100%;border:1px solid var(--line);background:#fff;border-radius:12px;padding:12px;text-align:left;cursor:pointer}
+    .order-preview-card:hover{border-color:#fdba74;background:#fffaf5}
+    .order-preview-card.active{border-color:var(--primary);background:#fff7ed;box-shadow:0 0 0 2px rgba(249,115,22,.08)}
+    .order-preview-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+    .order-preview-items{font-size:12px;color:#4b5563;line-height:1.5;margin-top:7px}
+    .order-preview-total{font-size:17px;font-weight:800;color:var(--primary);white-space:nowrap}
+    .order-checkout-card{position:sticky;top:20px}
+    .payment-split-row{display:grid;grid-template-columns:1.2fr .8fr auto;gap:8px;align-items:end}
+    .payment-entry{display:flex;justify-content:space-between;gap:10px;align-items:center;border-bottom:1px solid var(--line);padding:9px 0}
+    .payment-entry:last-child{border-bottom:0}
+    .payment-summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+    .payment-summary-grid>div{background:#fff;border:1px solid var(--line);border-radius:9px;padding:9px}
+    .payment-summary-grid small{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;margin-bottom:4px}
+    .payment-summary-grid b{font-size:16px}
+    .fulfillment-box{margin-top:12px;padding:12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px}
+    .fulfillment-box .sale-type-box{margin-top:7px}
+    .delivery-address-box{margin-top:14px}
 
     [hidden]{display:none!important}
     .login-screen{min-height:100vh;display:grid;place-items:center;padding:22px;background:linear-gradient(135deg,#111827 0%,#1f2937 55%,#f97316 140%)}
@@ -112,10 +131,10 @@
       aside{position:static;width:100%;height:auto}
       .app{display:block} main{margin-left:0;width:100%}
       nav{display:flex;overflow:auto}nav button{min-width:max-content}
-      .grid{grid-template-columns:repeat(2,1fr)}.two,.pdv-layout,.preorder-layout{grid-template-columns:1fr}
-      .pdv-cart,.preorder-side{position:static}.product-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .grid{grid-template-columns:repeat(2,1fr)}.two,.pdv-layout,.preorder-layout,.order-close-layout{grid-template-columns:1fr}
+      .pdv-cart,.preorder-side,.order-checkout-card{position:static}.product-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
     }
-    @media(max-width:560px){.grid{grid-template-columns:1fr}main{padding:14px}.product-grid{grid-template-columns:1fr 1fr}.product-btn{min-height:100px;padding:11px}}
+    @media(max-width:560px){.grid{grid-template-columns:1fr}main{padding:14px}.product-grid{grid-template-columns:1fr 1fr}.product-btn{min-height:100px;padding:11px}.payment-split-row,.payment-summary-grid{grid-template-columns:1fr}}
     @media print{
       aside,.no-print{display:none!important}
       main{margin:0;width:100%;padding:0}
@@ -217,23 +236,8 @@
       <div class="spacer"></div>
 
       <div id="pdvCounterArea" class="pdv-layout">
-        <div class="card">
-          <div class="row" style="align-items:center;justify-content:space-between">
-            <div>
-              <h2 style="margin-bottom:4px">Venda de Balcão</h2>
-              <div class="muted">Única modalidade criada e fechada diretamente no PDV.</div>
-            </div>
-            <div class="field" style="max-width:240px;min-width:180px">
-              <label>Buscar produto</label>
-              <input id="pdvSearch" placeholder="Digite o nome..." oninput="renderPDVProducts()">
-            </div>
-          </div>
-          <div class="spacer"></div>
-          <div id="pdvProductGrid" class="product-grid"></div>
-        </div>
-
         <div class="card pdv-cart">
-          <h2>Carrinho</h2>
+          <h2>Carrinho / Finalização</h2>
           <div id="cart"></div>
           <div class="cart-total"><span>Total</span><span id="cartTotal">R$ 0,00</span></div>
 
@@ -267,46 +271,69 @@
           <div class="spacer"></div>
           <button class="btn secondary" style="width:100%" onclick="resetPDV()">Limpar</button>
         </div>
+
+        <div class="card">
+          <div class="row" style="align-items:center;justify-content:space-between">
+            <div>
+              <h2 style="margin-bottom:4px">Produtos cadastrados</h2>
+              <div class="muted">Selecione os itens à direita para adicionar ao carrinho.</div>
+            </div>
+            <div class="field" style="max-width:240px;min-width:180px">
+              <label>Buscar produto</label>
+              <input id="pdvSearch" placeholder="Digite o nome..." oninput="renderPDVProducts()">
+            </div>
+          </div>
+          <div class="spacer"></div>
+          <div id="pdvProductGrid" class="product-grid"></div>
+        </div>
       </div>
 
       <div id="pdvOrderArea" style="display:none">
-        <div class="two">
+        <div class="order-close-layout">
           <div class="card">
-            <h2>Selecionar pré-venda aberta</h2>
-            <div class="field">
-              <label>Cliente / pedido</label>
-              <select id="savedOrderSelect" onchange="loadSavedOrder(this.value)">
-                <option value="">Selecione o nome do cliente</option>
-              </select>
-            </div>
-            <div class="spacer"></div>
-            <div id="selectedOrderInfo" class="muted">A comanda ou encomenda deve ser criada previamente em Cozinha / Comandas.</div>
-            <div class="spacer"></div>
-            <div id="selectedOrderCart" class="locked-cart">
-              <div class="muted">Nenhuma pré-venda selecionada.</div>
-            </div>
-            <div class="cart-total"><span>Total</span><span id="selectedOrderTotal">R$ 0,00</span></div>
+            <h2>Prévia de comandas e encomendas</h2>
+            <p class="muted">Cada cliente aparece uma única vez. Se houver vários pedidos abertos com o mesmo nome, todos serão somados em uma única finalização.</p>
+            <div id="savedOrderPreviewList" class="order-preview-list"></div>
           </div>
 
-          <div class="card">
-            <h2>Finalização e pagamento</h2>
-            <div class="field">
-              <label>Forma de pagamento</label>
-              <select id="orderPayment" onchange="updateOrderPaymentFields()">
-                <option>Dinheiro</option>
-                <option>Pix</option>
-                <option>Cartão Débito</option>
-                <option>Cartão Crédito</option>
-              </select>
-            </div>
+          <div class="card order-checkout-card">
+            <h2>Finalização do cliente</h2>
+            <div id="selectedOrderInfo" class="muted">Selecione um cliente na prévia ao lado.</div>
             <div class="spacer"></div>
-            <div class="field" id="orderPaidField">
-              <label>Valor pago</label>
-              <input id="orderPaid" type="number" min="0" step="0.01" placeholder="0,00" oninput="updateOrderChange()">
-            </div>
-            <div class="troco-box">Troco: <span id="orderChange">R$ 0,00</span></div>
+            <div id="selectedOrderCart" class="locked-cart"><div class="muted">Nenhum cliente selecionado.</div></div>
+            <div class="cart-total"><span>Valor total</span><span id="selectedOrderTotal">R$ 0,00</span></div>
+
             <div class="spacer"></div>
-            <button class="btn ok" style="width:100%;font-size:16px;padding:13px" onclick="finishSavedOrder()">Finalizar pagamento</button>
+            <div class="payment-box">
+              <h2 style="font-size:15px;margin-bottom:10px">Pagamento — permite parcialidade</h2>
+              <div class="payment-split-row">
+                <div class="field">
+                  <label>Tipo de pagamento</label>
+                  <select id="orderPaymentMethod">
+                    <option>Dinheiro</option>
+                    <option>Pix</option>
+                    <option>Cartão Débito</option>
+                    <option>Cartão Crédito</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Valor pago</label>
+                  <input id="orderPaymentAmount" type="number" min="0" step="0.01" placeholder="0,00" onkeydown="if(event.key==='Enter'){event.preventDefault();addOrderPayment()}">
+                </div>
+                <button type="button" class="btn primary" onclick="addOrderPayment()">Adicionar</button>
+              </div>
+              <div class="spacer"></div>
+              <button type="button" class="btn secondary" style="width:100%" onclick="addRemainingOrderPayment()">Adicionar valor restante</button>
+              <div id="orderPaymentList" style="margin-top:8px"></div>
+              <div class="payment-summary-grid">
+                <div><small>Total</small><b id="orderPaymentTotal">R$ 0,00</b></div>
+                <div><small>Pago</small><b id="orderPaymentPaid">R$ 0,00</b></div>
+                <div><small>Restante / Troco</small><b id="orderPaymentBalance">R$ 0,00</b></div>
+              </div>
+            </div>
+
+            <div class="spacer"></div>
+            <button class="btn ok" style="width:100%;font-size:16px;padding:13px" onclick="finishSavedOrder()">Finalizar todos os pedidos deste cliente</button>
           </div>
         </div>
       </div>
@@ -319,8 +346,8 @@
         <div class="card">
           <div class="row" style="align-items:center;justify-content:space-between">
             <div>
-              <h2 style="margin-bottom:4px">Criar pré-venda</h2>
-              <div class="muted">Abra aqui Mesa/Comanda ou Encomenda. O pagamento será feito somente depois no PDV.</div>
+              <h2 style="margin-bottom:4px">Produtos para o pedido</h2>
+              <div class="muted">Selecione os produtos cadastrados. Eles serão enviados para a comanda ou encomenda aberta ao lado.</div>
             </div>
             <div class="field" style="max-width:240px;min-width:180px">
               <label>Buscar produto</label>
@@ -332,7 +359,7 @@
         </div>
 
         <div class="card preorder-side">
-          <h2>Dados da pré-venda</h2>
+          <h2>Dados do pedido</h2>
 
           <div class="field">
             <label>Tipo</label>
@@ -342,44 +369,45 @@
             </div>
           </div>
 
+          <div id="preorderFulfillmentBox" class="fulfillment-box" style="display:none">
+            <label>Como o cliente receberá a encomenda?</label>
+            <div class="sale-type-box">
+              <button type="button" id="preFulfillmentPickup" class="sale-type-btn active" onclick="setPreorderFulfillment('retirada')">Retirada</button>
+              <button type="button" id="preFulfillmentDelivery" class="sale-type-btn" onclick="setPreorderFulfillment('entrega')">Entrega</button>
+            </div>
+          </div>
+
           <div class="spacer"></div>
           <div class="field">
             <label>Nome do cliente *</label>
             <input id="preCustomer" placeholder="Nome que aparecerá no PDV">
           </div>
 
-          <div id="tableFields">
-            <div class="spacer"></div>
-            <div class="field">
-              <label>Mesa / identificação *</label>
-              <input id="preTable" placeholder="Ex.: Mesa 04">
-            </div>
-          </div>
-
           <div id="preorderFields" style="display:none">
             <div class="spacer"></div>
             <div class="field"><label>Telefone *</label><input id="prePhone" placeholder="(00) 00000-0000"></div>
             <div class="spacer"></div>
-            <div class="field"><label>Endereço completo *</label><textarea id="preAddress" placeholder="Rua, número, complemento, bairro, cidade..."></textarea></div>
-            <div class="spacer"></div>
-            <div class="field"><label>Informações adicionais *</label><textarea id="preAdditional" placeholder="Horário, referência, detalhes da encomenda..."></textarea></div>
+            <div class="field"><label>Informações adicionais *</label><textarea id="preAdditional" placeholder="Horário de retirada/entrega, referência, contato ou detalhes da encomenda..."></textarea></div>
+            <div id="preDeliveryAddressBox" class="delivery-address-box" style="display:none">
+              <div class="field"><label>Endereço de entrega *</label><textarea id="preAddress" placeholder="Rua, número, complemento, bairro, cidade..."></textarea></div>
+            </div>
           </div>
 
           <div class="spacer"></div>
           <div class="field">
             <label>Observações para a cozinha</label>
-            <textarea id="preNotes" placeholder="Ex.: lanche sem salada, sem cebola..."></textarea>
+            <textarea id="preNotes" placeholder="Ex.: sem salada, sem cebola, ponto do lanche... (opcional)"></textarea>
           </div>
 
           <div class="spacer"></div>
           <h2 style="font-size:16px">Itens</h2>
           <div id="preorderCart"></div>
-          <div class="cart-total"><span>Total</span><span id="preorderTotal">R$ 0,00</span></div>
+          <div class="cart-total"><span>Total prévio</span><span id="preorderTotal">R$ 0,00</span></div>
 
           <div class="spacer"></div>
           <button class="btn kitchen-btn" style="width:100%;font-size:15px;padding:12px" onclick="savePreorder()">Salvar e enviar para preparação</button>
           <div class="spacer"></div>
-          <button class="btn secondary" style="width:100%" onclick="resetPreorder()">Nova pré-venda</button>
+          <button class="btn secondary" style="width:100%" onclick="resetPreorder()">Novo pedido</button>
         </div>
       </div>
 
@@ -390,7 +418,7 @@
       <div class="grid">
         <div class="card metric"><div class="label">Em preparação</div><div class="value" id="kitchenPreparing">0</div></div>
         <div class="card metric"><div class="label">Prontos</div><div class="value" id="kitchenReady">0</div></div>
-        <div class="card metric"><div class="label">Comandas abertas</div><div class="value" id="kitchenOpen">0</div></div>
+        <div class="card metric"><div class="label">Pedidos abertos</div><div class="value" id="kitchenOpen">0</div></div>
         <div class="card metric"><div class="label">Total em aberto</div><div class="value" id="kitchenOpenValue">R$ 0,00</div></div>
       </div>
 
@@ -603,7 +631,7 @@ const FIREBASE_CONFIG={
   appId:'1:663236860252:web:c646e88e7ca6610c6cc999',
   measurementId:'G-7TQY7QR4BE'
 };
-const FIREBASE_SCHEMA_VERSION=1;
+const FIREBASE_SCHEMA_VERSION=2;
 let firestoreDB=null;
 let firebaseAuthTransport=null;
 let firebaseReady=false;
@@ -617,8 +645,10 @@ let db=loadDB();
 let auth=loadAuth();
 let cart=[];
 let pdvMode='balcao';
-let currentKitchenOrderId='';
+let currentOrderGroupKey='';
+let orderPayments=[];
 let preorderType='mesa';
+let preorderFulfillment='retirada';
 let preorderCart=[];
 let editingPreorderId='';
 
@@ -636,6 +666,40 @@ function localDate(d=new Date()){
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function safeItems(items){return Array.isArray(items)?items:[]}
 function isOpenOrder(o){return !!o && o.status!=='finalizado' && o.status!=='cancelado'}
+function customerGroupKey(name){
+  return String(name||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ');
+}
+function aggregateOrderItems(orders){
+  const map=new Map();
+  (orders||[]).forEach(o=>safeItems(o.items).forEach(i=>{
+    const key=String(i.productId||i.name);
+    const cur=map.get(key);
+    if(cur)cur.qty+=toInt(i.qty);else map.set(key,{productId:i.productId,name:i.name,price:toNumber(i.price),qty:toInt(i.qty)});
+  }));
+  return [...map.values()].filter(i=>i.qty>0);
+}
+function openOrderGroups(){
+  const map=new Map();
+  db.kitchenOrders.filter(isOpenOrder).forEach(o=>{
+    const key=customerGroupKey(o.customer);
+    if(!key)return;
+    if(!map.has(key))map.set(key,{key,customer:o.customer||'Cliente',orders:[]});
+    map.get(key).orders.push(o);
+  });
+  return [...map.values()].map(g=>({
+    ...g,
+    items:aggregateOrderItems(g.orders),
+    total:g.orders.reduce((sum,o)=>sum+toNumber(o.total),0),
+    firstAt:g.orders.map(o=>o.sentAt).filter(Boolean).sort()[0]||'',
+    types:[...new Set(g.orders.map(o=>o.type==='encomenda'?(o.fulfillment==='entrega'?'Encomenda • Entrega':'Encomenda • Retirada'):'Mesa / Comanda'))]
+  })).sort((a,b)=>String(a.customer).localeCompare(String(b.customer),'pt-BR'));
+}
+function selectedOrderGroup(){return openOrderGroups().find(g=>g.key===currentOrderGroupKey)||null}
+function paymentLabel(s){
+  const methods=Array.isArray(s?.payments)&&s.payments.length?s.payments.map(p=>p.method):String(s?.payment||'').split(' + ');
+  return [...new Set(methods.filter(Boolean))].join(' + ')||'Não informado';
+}
+function saleHasPayment(s,method){return !method||paymentLabel(s).split(' + ').includes(method)}
 
 async function testFirebaseSupport(){
   const node=el('supportFirebaseStatus');
@@ -866,6 +930,7 @@ function normalizeDB(raw){
       date:s?.date||new Date().toISOString(),
       customer:String(s?.customer||''),
       saleType:['balcao','comanda','encomenda'].includes(s?.saleType)?s.saleType:'balcao',
+      payments:Array.isArray(s?.payments)?s.payments.map(p=>({method:String(p?.method||'Dinheiro'),amount:Math.max(0,toNumber(p?.amount))})).filter(p=>p.amount>0):[],
       payment:String(s?.payment||'Dinheiro'),
       paid:Math.max(0,toNumber(s?.paid,calcTotal)),
       change:Math.max(0,toNumber(s?.change)),
@@ -894,6 +959,7 @@ function normalizeDB(raw){
       number:String(o?.number||''),
       customer:String(o?.customer||''),
       type:o?.type==='encomenda'?'encomenda':'mesa',
+      fulfillment:o?.type==='encomenda'?(o?.fulfillment==='entrega'?'entrega':(o?.fulfillment==='retirada'?'retirada':(o?.address?'entrega':'retirada'))):'',
       table:String(o?.table||''),
       phone:String(o?.phone||''),
       address:String(o?.address||''),
@@ -1062,7 +1128,8 @@ function logout(){
   setLoggedIn(null);
   cart=[];
   preorderCart=[];
-  currentKitchenOrderId='';
+  currentOrderGroupKey='';
+  orderPayments=[];
   editingPreorderId='';
   document.querySelectorAll('nav button[data-page]').forEach(b=>b.style.display='block');
   updateAuthUI();
@@ -1267,7 +1334,8 @@ function transferToStore(id){
 
 function setPDVMode(mode){
   pdvMode=mode==='comanda'?'comanda':'balcao';
-  currentKitchenOrderId='';
+  currentOrderGroupKey='';
+  orderPayments=[];
   updatePDVModeUI();
   renderSavedOrders();
   renderSelectedOrder();
@@ -1281,88 +1349,136 @@ function updatePDVModeUI(){
   oa.style.display=pdvMode==='comanda'?'block':'none';
 }
 function renderSavedOrders(){
-  const sel=el('savedOrderSelect');if(!sel)return;
-  const current=currentKitchenOrderId||sel.value;
-  sel.innerHTML='<option value="">Selecione o nome do cliente</option>';
-  db.kitchenOrders.filter(isOpenOrder).sort((a,b)=>(a.customer||'').localeCompare(b.customer||'')).forEach(o=>{
-    const op=document.createElement('option');
-    op.value=o.id;
-    const label=o.type==='encomenda'?'Encomenda':(o.table||'Mesa/Comanda');
-    op.textContent=`${o.customer} — ${label} — ${money(o.total)}`;
-    sel.appendChild(op);
+  const list=el('savedOrderPreviewList');if(!list)return;
+  const groups=openOrderGroups();
+  if(currentOrderGroupKey&&!groups.some(g=>g.key===currentOrderGroupKey)){currentOrderGroupKey='';orderPayments=[]}
+  if(!groups.length){list.innerHTML='<div class="muted">Nenhuma comanda ou encomenda aberta.</div>';return}
+  list.innerHTML='';
+  groups.forEach(g=>{
+    const btn=document.createElement('button');btn.type='button';btn.className='order-preview-card'+(g.key===currentOrderGroupKey?' active':'');
+    const items=g.items.map(i=>`${i.qty}× ${esc(i.name)}`).join(' · ');
+    btn.innerHTML=`<div class="order-preview-head"><div><b style="font-size:16px">${esc(g.customer)}</b><div class="muted">${esc(g.types.join(' + '))} · ${g.orders.length} pedido(s)</div></div><div class="order-preview-total">${money(g.total)}</div></div><div class="order-preview-items"><b>Prévia:</b> ${items||'Sem itens'}</div>`;
+    btn.addEventListener('click',()=>loadSavedOrder(g.key));list.appendChild(btn);
   });
-  if([...sel.options].some(o=>o.value===current))sel.value=current;
-  else currentKitchenOrderId='';
 }
-function loadSavedOrder(id){currentKitchenOrderId=id||'';renderSelectedOrder()}
+function loadSavedOrder(groupKey){
+  currentOrderGroupKey=groupKey||'';
+  orderPayments=[];
+  renderSavedOrders();
+  renderSelectedOrder();
+}
 function renderSelectedOrder(){
   const info=el('selectedOrderInfo'),box=el('selectedOrderCart'),totalEl=el('selectedOrderTotal');
   if(!info||!box||!totalEl)return;
-  const o=db.kitchenOrders.find(x=>x.id===currentKitchenOrderId&&isOpenOrder(x));
-  if(!o){
-    info.innerHTML='A comanda ou encomenda deve ser criada previamente em Cozinha / Comandas.';
-    box.innerHTML='<div class="muted">Nenhuma pré-venda selecionada.</div>';
-    totalEl.textContent=money(0);
-    if(el('orderPaid'))el('orderPaid').value='';
-    if(el('orderChange'))el('orderChange').textContent=money(0);
-    return;
+  const g=selectedOrderGroup();
+  if(!g){
+    info.innerHTML='Selecione um cliente na prévia ao lado. Todos os pedidos abertos do mesmo nome serão agrupados.';
+    box.innerHTML='<div class="muted">Nenhum cliente selecionado.</div>';
+    totalEl.textContent=money(0);orderPayments=[];renderOrderPayments();return;
   }
-  const details=o.type==='encomenda'
-    ?`<b>Encomenda</b><br>Telefone: ${esc(o.phone||'')}<br>Endereço: ${esc(o.address||'')}<br>Informações: ${esc(o.additional||'')}`
-    :`<b>Mesa / Comanda</b><br>${esc(o.table||'Sem identificação')}`;
-  info.innerHTML=`<b style="font-size:17px">${esc(o.customer)}</b><br>${details}${o.notes?`<br><br><b>Observações:</b> ${esc(o.notes)}`:''}`;
-  box.innerHTML=safeItems(o.items).map(i=>`<div class="cart-item"><div><b>${esc(i.name)}</b><br><small>${i.qty} × ${money(i.price)}</small></div><div><b>${money(i.qty*i.price)}</b></div></div>`).join('')||'<div class="muted">Pedido sem itens.</div>';
-  totalEl.textContent=money(o.total||0);
-  updateOrderChange();
+  const detailLines=g.orders.map(o=>{
+    if(o.type!=='encomenda')return `#${esc(o.number)} • Mesa / Comanda`;
+    const mode=o.fulfillment==='entrega'?'Entrega':'Retirada';
+    return `#${esc(o.number)} • Encomenda • ${mode}`;
+  }).join('<br>');
+  const contacts=g.orders.filter(o=>o.type==='encomenda').map(o=>{
+    const mode=o.fulfillment==='entrega'?'Entrega':'Retirada';
+    const address=o.fulfillment==='entrega'&&o.address?`<br><b>Endereço:</b> ${esc(o.address)}`:'';
+    const additional=o.additional?`<br><b>Informações:</b> ${esc(o.additional)}`:'';
+    return `<div style="margin-top:7px"><b>${mode}:</b> ${esc(o.phone||'-')}${address}${additional}</div>`;
+  }).join('');
+  info.innerHTML=`<b style="font-size:18px">${esc(g.customer)}</b><br><span class="muted">${g.orders.length} pedido(s) agrupado(s)</span><div style="margin-top:8px">${detailLines}</div>${contacts}`;
+  box.innerHTML=g.items.map(i=>`<div class="cart-item"><div><b>${esc(i.name)}</b><br><small>${i.qty} × ${money(i.price)}</small></div><div><b>${money(i.qty*i.price)}</b></div></div>`).join('')||'<div class="muted">Pedidos sem itens.</div>';
+  totalEl.textContent=money(g.total);
+  renderOrderPayments();
 }
-function updateOrderPaymentFields(){
-  const payment=el('orderPayment')?.value,field=el('orderPaidField'),inp=el('orderPaid');
-  if(!field||!inp)return;
-  if(payment==='Dinheiro')field.style.display='flex';else{field.style.display='none';inp.value=''}
-  updateOrderChange();
+function updateOrderPaymentFields(){renderOrderPayments()}
+function orderPaymentNumbers(){
+  const total=toNumber(selectedOrderGroup()?.total);
+  const received=orderPayments.reduce((s,p)=>s+toNumber(p.amount),0);
+  const remaining=Math.max(0,total-received);
+  const change=Math.max(0,received-total);
+  return {total,received,remaining,change};
 }
-function updateOrderChange(){
-  const o=db.kitchenOrders.find(x=>x.id===currentKitchenOrderId&&isOpenOrder(x));
-  const total=toNumber(o?.total),payment=el('orderPayment')?.value,paid=toNumber(el('orderPaid')?.value);
-  const change=payment==='Dinheiro'?Math.max(0,paid-total):0;
-  if(el('orderChange'))el('orderChange').textContent=money(change);
+function renderOrderPayments(){
+  const list=el('orderPaymentList');if(!list)return;
+  const n=orderPaymentNumbers();
+  list.innerHTML=orderPayments.length?orderPayments.map((p,idx)=>`<div class="payment-entry"><div><b>${esc(p.method)}</b><div class="muted">Parcela ${idx+1}</div></div><div><b>${money(p.amount)}</b> <button type="button" class="btn danger" style="padding:5px 8px;margin-left:6px" onclick="removeOrderPayment(${idx})">×</button></div></div>`).join(''):'<div class="muted">Nenhuma parcela adicionada. Ex.: R$ 20,00 Débito + R$ 10,00 Crédito.</div>';
+  if(el('orderPaymentTotal'))el('orderPaymentTotal').textContent=money(n.total);
+  if(el('orderPaymentPaid'))el('orderPaymentPaid').textContent=money(n.received);
+  if(el('orderPaymentBalance'))el('orderPaymentBalance').textContent=n.change>0?`Troco ${money(n.change)}`:money(n.remaining);
 }
+function addOrderPayment(){
+  const g=selectedOrderGroup();if(!g){alert('Selecione primeiro o cliente que será finalizado.');return}
+  const method=el('orderPaymentMethod')?.value||'Dinheiro';
+  const amount=Number(el('orderPaymentAmount')?.value||0);
+  const n=orderPaymentNumbers();
+  if(!Number.isFinite(amount)||amount<=0){alert('Informe um valor pago maior que zero.');return}
+  if(n.remaining<=0){alert('O valor do pedido já foi totalmente informado.');return}
+  if(method!=='Dinheiro'&&amount>n.remaining+0.009){alert(`Para ${method}, o valor não pode ultrapassar o restante de ${money(n.remaining)}.`);return}
+  orderPayments.push({method,amount:Math.round(amount*100)/100});
+  if(el('orderPaymentAmount'))el('orderPaymentAmount').value='';
+  renderOrderPayments();
+}
+function addRemainingOrderPayment(){
+  const g=selectedOrderGroup();if(!g){alert('Selecione primeiro o cliente.');return}
+  const n=orderPaymentNumbers();if(n.remaining<=0){alert('Não há valor restante.');return}
+  const method=el('orderPaymentMethod')?.value||'Dinheiro';
+  orderPayments.push({method,amount:Math.round(n.remaining*100)/100});
+  if(el('orderPaymentAmount'))el('orderPaymentAmount').value='';
+  renderOrderPayments();
+}
+function removeOrderPayment(index){orderPayments.splice(index,1);renderOrderPayments()}
+function updateOrderChange(){renderOrderPayments()}
 function finishSavedOrder(){
-  const o=db.kitchenOrders.find(x=>x.id===currentKitchenOrderId&&isOpenOrder(x));
-  if(!o){alert('Selecione uma comanda ou encomenda aberta.');return}
-  if(!safeItems(o.items).length){alert('Esta comanda não possui itens.');return}
-  for(const i of safeItems(o.items)){
+  const g=selectedOrderGroup();
+  if(!g){alert('Selecione uma comanda ou encomenda aberta.');return}
+  if(!g.items.length){alert('Os pedidos deste cliente não possuem itens.');return}
+  for(const i of g.items){
     const p=db.products.find(x=>x.id===i.productId);
     if(!p||p.storeQty<i.qty){alert(`Estoque insuficiente para ${i.name}. Disponível fisicamente na loja: ${p?.storeQty||0}`);return}
   }
-  const total=toNumber(o.total),payment=el('orderPayment')?.value||'Dinheiro';
-  let paid=total,change=0;
-  if(payment==='Dinheiro'){
-    paid=Number(el('orderPaid')?.value||0);
-    if(!Number.isFinite(paid)||paid<total){alert(`O valor pago é menor que o total da venda (${money(total)}).`);return}
-    change=paid-total;
-  }
-  safeItems(o.items).forEach(i=>{const p=db.products.find(x=>x.id===i.productId);if(p)p.storeQty-=i.qty});
+  const n=orderPaymentNumbers();
+  if(n.received+0.009<n.total){alert(`Ainda falta informar ${money(n.remaining)} no pagamento.`);return}
+  if(n.received>n.total+0.009&&!orderPayments.some(p=>p.method==='Dinheiro')){alert('Pagamento acima do total só é permitido quando houver parcela em dinheiro para cálculo de troco.');return}
+  const payments=orderPayments.map(p=>({method:p.method,amount:Math.round(toNumber(p.amount)*100)/100}));
+  const payment=[...new Set(payments.map(p=>p.method))].join(' + ');
+  g.items.forEach(i=>{const p=db.products.find(x=>x.id===i.productId);if(p)p.storeQty-=i.qty});
+  const encomendas=g.orders.filter(o=>o.type==='encomenda');
   const sale={
-    id:uid(),number:nextNumber(db.sales,5),date:new Date().toISOString(),customer:o.customer||'',
-    saleType:o.type==='encomenda'?'encomenda':'comanda',phone:o.phone||'',address:o.address||'',additional:o.additional||'',
-    kitchenNotes:o.notes||'',kitchenOrderId:o.id,payment,paid,change,items:safeItems(o.items).map(i=>({...i})),total
+    id:uid(),number:nextNumber(db.sales,5),date:new Date().toISOString(),customer:g.customer||'',
+    saleType:g.orders.some(o=>o.type==='encomenda')?'encomenda':'comanda',
+    phone:[...new Set(encomendas.map(o=>o.phone).filter(Boolean))].join(' / '),
+    address:[...new Set(encomendas.map(o=>o.address).filter(Boolean))].join(' / '),
+    additional:[...new Set(encomendas.map(o=>o.additional).filter(Boolean))].join(' / '),
+    kitchenNotes:g.orders.map(o=>o.notes).filter(Boolean).join(' | '),kitchenOrderIds:g.orders.map(o=>o.id),
+    payment,payments,paid:n.received,change:n.change,items:g.items.map(i=>({...i})),total:n.total
   };
   db.sales.push(sale);
-  o.status='finalizado';o.finalizedAt=new Date().toISOString();o.saleId=sale.id;
-  currentKitchenOrderId='';
-  if(el('orderPaid'))el('orderPaid').value='';
-  if(saveDB())alert(`Pagamento finalizado para ${sale.customer}.\nTotal: ${money(total)}${payment==='Dinheiro'?`\nTroco: ${money(change)}`:''}`);
+  g.orders.forEach(o=>{o.status='finalizado';o.finalizedAt=new Date().toISOString();o.saleId=sale.id});
+  currentOrderGroupKey='';orderPayments=[];
+  if(saveDB())alert(`Pagamento finalizado para ${sale.customer}.\n${g.orders.length} pedido(s) reunido(s) em uma venda.\nTotal: ${money(n.total)}${n.change>0?`\nTroco: ${money(n.change)}`:''}`);
 }
 
-function setPreorderType(type){preorderType=type==='encomenda'?'encomenda':'mesa';updatePreorderTypeUI()}
+function setPreorderType(type){
+  preorderType=type==='encomenda'?'encomenda':'mesa';
+  if(preorderType==='mesa')preorderFulfillment='retirada';
+  updatePreorderTypeUI();
+}
+function setPreorderFulfillment(mode){
+  preorderFulfillment=mode==='entrega'?'entrega':'retirada';
+  updatePreorderTypeUI();
+}
 function updatePreorderTypeUI(){
-  const tableBtn=el('preTypeTable'),orderBtn=el('preTypeOrder'),tableFields=el('tableFields'),orderFields=el('preorderFields');
-  if(!tableBtn||!orderBtn||!tableFields||!orderFields)return;
+  const tableBtn=el('preTypeTable'),orderBtn=el('preTypeOrder'),orderFields=el('preorderFields'),fulfillmentBox=el('preorderFulfillmentBox'),pickupBtn=el('preFulfillmentPickup'),deliveryBtn=el('preFulfillmentDelivery'),addressBox=el('preDeliveryAddressBox');
+  if(!tableBtn||!orderBtn||!orderFields)return;
   tableBtn.classList.toggle('active',preorderType==='mesa');
   orderBtn.classList.toggle('active',preorderType==='encomenda');
-  tableFields.style.display=preorderType==='mesa'?'block':'none';
   orderFields.style.display=preorderType==='encomenda'?'block':'none';
+  if(fulfillmentBox)fulfillmentBox.style.display=preorderType==='encomenda'?'block':'none';
+  if(pickupBtn)pickupBtn.classList.toggle('active',preorderFulfillment==='retirada');
+  if(deliveryBtn)deliveryBtn.classList.toggle('active',preorderFulfillment==='entrega');
+  if(addressBox)addressBox.style.display=preorderType==='encomenda'&&preorderFulfillment==='entrega'?'block':'none';
 }
 function renderKitchenProducts(){
   const grid=el('kitchenProductGrid');if(!grid)return;
@@ -1407,44 +1523,47 @@ function validatePreorderAvailability(){
   return true;
 }
 function savePreorder(){
-  if(!preorderCart.length){alert('Adicione os produtos da pré-venda.');return}
+  if(!preorderCart.length){alert('Adicione os produtos do pedido.');return}
   if(!validatePreorderAvailability())return;
   const customer=(el('preCustomer')?.value||'').trim();
-  const table=(el('preTable')?.value||'').trim();
   const phone=(el('prePhone')?.value||'').trim();
   const address=(el('preAddress')?.value||'').trim();
   const additional=(el('preAdditional')?.value||'').trim();
   const notes=(el('preNotes')?.value||'').trim();
   if(!customer){alert('Informe o nome do cliente.');el('preCustomer')?.focus();return}
-  if(preorderType==='mesa'&&!table){alert('Informe a mesa ou identificação da comanda.');el('preTable')?.focus();return}
-  if(preorderType==='encomenda'&&(!phone||!address||!additional)){alert('Na encomenda são obrigatórios telefone, endereço completo e informações adicionais.');return}
+  if(preorderType==='encomenda'){
+    if(!phone){alert('Informe o telefone para contato da encomenda.');el('prePhone')?.focus();return}
+    if(!additional){alert('Informe os dados adicionais da encomenda.');el('preAdditional')?.focus();return}
+    if(preorderFulfillment==='entrega'&&!address){alert('Informe o endereço de entrega.');el('preAddress')?.focus();return}
+  }
   const total=preorderCart.reduce((s,i)=>s+i.qty*i.price,0);
   const payload={
-    customer,type:preorderType==='encomenda'?'encomenda':'mesa',table:preorderType==='mesa'?table:'',
-    phone:preorderType==='encomenda'?phone:'',address:preorderType==='encomenda'?address:'',additional:preorderType==='encomenda'?additional:'',
+    customer,type:preorderType==='encomenda'?'encomenda':'mesa',table:'',
+    fulfillment:preorderType==='encomenda'?preorderFulfillment:'',
+    phone:preorderType==='encomenda'?phone:'',address:preorderType==='encomenda'&&preorderFulfillment==='entrega'?address:'',additional:preorderType==='encomenda'?additional:'',
     notes,items:preorderCart.map(i=>({...i})),total,status:'preparo',updatedAt:new Date().toISOString()
   };
   let savedOrder;
   if(editingPreorderId){
     savedOrder=db.kitchenOrders.find(x=>x.id===editingPreorderId&&isOpenOrder(x));
-    if(!savedOrder){alert('Não foi possível localizar a comanda que estava sendo editada.');return}
+    if(!savedOrder){alert('Não foi possível localizar o pedido que estava sendo editado.');return}
     Object.assign(savedOrder,payload,{sentAt:savedOrder.sentAt||new Date().toISOString()});
   }else{
     savedOrder={id:uid(),number:nextNumber(db.kitchenOrders,4),sentAt:new Date().toISOString(),...payload};
     db.kitchenOrders.push(savedOrder);
   }
-  const savedName=savedOrder.customer,savedNumber=savedOrder.number,savedType=savedOrder.type==='encomenda'?'Encomenda':(savedOrder.table||'Mesa / Comanda');
+  const savedName=savedOrder.customer;
+  const savedType=savedOrder.type==='encomenda'?`Encomenda — ${savedOrder.fulfillment==='entrega'?'Entrega':'Retirada'}`:'Mesa / Comanda';
   if(!saveDB())return;
   resetPreorder(false);
   const success=el('preorderSuccess');
-  if(success){success.textContent=`✓ Pré-venda salva: ${savedName} — ${savedType} — #${savedNumber}. Ela já está disponível no PDV em "Fechar Comanda / Encomenda".`;success.style.display='block'}
+  if(success){success.textContent=`✓ Pedido salvo: ${savedName} — ${savedType} — #${savedOrder.number}. No PDV, pedidos adicionais com o mesmo nome serão reunidos na mesma finalização.`;success.style.display='block'}
   el('kitchenOrders')?.scrollIntoView({behavior:'smooth',block:'start'});
 }
 function editPreorder(id){
   const o=db.kitchenOrders.find(x=>x.id===id&&isOpenOrder(x));if(!o)return;
-  editingPreorderId=o.id;preorderType=o.type==='encomenda'?'encomenda':'mesa';preorderCart=safeItems(o.items).map(i=>({...i}));
+  editingPreorderId=o.id;preorderType=o.type==='encomenda'?'encomenda':'mesa';preorderFulfillment=o.fulfillment==='entrega'?'entrega':'retirada';preorderCart=safeItems(o.items).map(i=>({...i}));
   if(el('preCustomer'))el('preCustomer').value=o.customer||'';
-  if(el('preTable'))el('preTable').value=o.table||'';
   if(el('prePhone'))el('prePhone').value=o.phone||'';
   if(el('preAddress'))el('preAddress').value=o.address||'';
   if(el('preAdditional'))el('preAdditional').value=o.additional||'';
@@ -1453,17 +1572,17 @@ function editPreorder(id){
   updatePreorderTypeUI();renderPreorderCart();window.scrollTo({top:0,behavior:'smooth'});
 }
 function resetPreorder(hideSuccess=true){
-  editingPreorderId='';preorderType='mesa';preorderCart=[];
-  ['preCustomer','preTable','prePhone','preAddress','preAdditional','preNotes'].forEach(id=>{if(el(id))el(id).value=''});
+  editingPreorderId='';preorderType='mesa';preorderFulfillment='retirada';preorderCart=[];
+  ['preCustomer','prePhone','preAddress','preAdditional','preNotes'].forEach(id=>{if(el(id))el(id).value=''});
   if(hideSuccess&&el('preorderSuccess'))el('preorderSuccess').style.display='none';
   updatePreorderTypeUI();renderPreorderCart();
 }
 function cancelPreorder(id){
   const o=db.kitchenOrders.find(x=>x.id===id&&isOpenOrder(x));if(!o)return;
-  if(!confirm(`Cancelar a comanda de ${o.customer}? Os itens reservados voltarão a ficar disponíveis para venda.`))return;
-  o.status='cancelado';o.cancelledAt=new Date().toISOString();
+  if(!confirm(`Cancelar o pedido de ${o.customer}? Os itens reservados voltarão a ficar disponíveis para venda.`))return;
+  const key=customerGroupKey(o.customer);o.status='cancelado';o.cancelledAt=new Date().toISOString();
   if(editingPreorderId===id)resetPreorder();
-  if(currentKitchenOrderId===id)currentKitchenOrderId='';
+  if(currentOrderGroupKey===key){currentOrderGroupKey='';orderPayments=[]}
   saveDB();
 }
 function renderKitchen(){
@@ -1477,8 +1596,9 @@ function renderKitchen(){
   box.innerHTML=[...open].sort((a,b)=>new Date(a.sentAt)-new Date(b.sentAt)).map(o=>{
     const status=o.status==='pronto'?'<span class="badge status-pronto">PRONTO</span>':'<span class="badge status-preparo">EM PREPARAÇÃO</span>';
     const items=safeItems(o.items).map(i=>`${i.qty}× ${esc(i.name)}`).join(' · ');
-    const type=o.type==='encomenda'?'Encomenda':`Mesa / Comanda${o.table?` — ${esc(o.table)}`:''}`;
-    return `<div class="kitchen-card"><div class="top"><div><div><b style="font-size:17px">${esc(o.customer)}</b> · #${esc(o.number)}</div><div class="muted">${type} · aberta em ${fmtDate(o.sentAt)}</div></div><div>${status}</div></div><div style="margin-top:10px"><b>Pedido:</b> ${items||'Sem itens'}</div>${o.notes?`<div class="order-note"><b>Observação:</b> ${esc(o.notes)}</div>`:''}${o.type==='encomenda'?`<div class="muted" style="margin-top:8px"><b>Telefone:</b> ${esc(o.phone)}<br><b>Endereço:</b> ${esc(o.address)}<br><b>Informações:</b> ${esc(o.additional)}</div>`:''}<div class="row no-print" style="margin-top:12px">${o.status==='preparo'?`<button class="btn ok" onclick="markKitchenReady('${o.id}')">Marcar como pronto</button>`:''}<button class="btn secondary" onclick="editPreorder('${o.id}')">Editar comanda</button><button class="btn danger" onclick="cancelPreorder('${o.id}')">Cancelar</button></div></div>`;
+    const type=o.type==='encomenda'?`Encomenda — ${o.fulfillment==='entrega'?'Entrega':'Retirada'}`:'Mesa / Comanda';
+    const encomendaInfo=o.type==='encomenda'?`<div class="muted" style="margin-top:8px"><b>Telefone:</b> ${esc(o.phone||'-')}${o.fulfillment==='entrega'?`<br><b>Endereço:</b> ${esc(o.address||'-')}`:''}${o.additional?`<br><b>Informações:</b> ${esc(o.additional)}`:''}</div>`:'';
+    return `<div class="kitchen-card"><div class="top"><div><div><b style="font-size:17px">${esc(o.customer)}</b> · #${esc(o.number)}</div><div class="muted">${type} · aberto em ${fmtDate(o.sentAt)}</div></div><div>${status}</div></div><div style="margin-top:10px"><b>Pedido:</b> ${items||'Sem itens'}</div><div style="margin-top:7px"><b>Total prévio:</b> ${money(o.total)}</div>${o.notes?`<div class="order-note"><b>Observação para cozinha:</b> ${esc(o.notes)}</div>`:''}${encomendaInfo}<div class="row no-print" style="margin-top:12px">${o.status==='preparo'?`<button class="btn ok" onclick="markKitchenReady('${o.id}')">Marcar como pronto</button>`:''}<button class="btn secondary" onclick="editPreorder('${o.id}')">Editar pedido</button><button class="btn danger" onclick="cancelPreorder('${o.id}')">Cancelar</button></div></div>`;
   }).join('');
 }
 function markKitchenReady(id){
@@ -1553,7 +1673,7 @@ function finishSale(){
     change=paid-total;
   }
   cart.forEach(i=>{const p=db.products.find(x=>x.id===i.productId);if(p)p.storeQty-=i.qty});
-  const sale={id:uid(),number:nextNumber(db.sales,5),date:new Date().toISOString(),customer:(el('saleCustomer')?.value||'').trim(),saleType:'balcao',phone:'',address:'',additional:'',kitchenNotes:'',kitchenOrderId:'',payment,paid,change,items:cart.map(i=>({...i})),total};
+  const sale={id:uid(),number:nextNumber(db.sales,5),date:new Date().toISOString(),customer:(el('saleCustomer')?.value||'').trim(),saleType:'balcao',phone:'',address:'',additional:'',kitchenNotes:'',kitchenOrderIds:[],payment,payments:[{method:payment,amount:paid}],paid,change,items:cart.map(i=>({...i})),total};
   db.sales.push(sale);cart=[];
   if(el('saleCustomer'))el('saleCustomer').value='';if(el('salePaid'))el('salePaid').value='';
   if(saveDB())alert(`Venda ${sale.number} finalizada.\nTotal: ${money(total)}${payment==='Dinheiro'?`\nTroco: ${money(change)}`:''}`);
@@ -1572,20 +1692,20 @@ function renderDashboard(){
   if(el('sumBalance'))el('sumBalance').textContent=money(totalSales-totalExp);
   const lows=db.products.filter(p=>availableStoreQty(p.id)<=3);
   if(el('lowStockList'))el('lowStockList').innerHTML=lows.length?lows.map(p=>`<div style="padding:6px 0"><b>${esc(p.name)}</b> — disponível: ${availableStoreQty(p.id)} | físico na loja: ${p.storeQty} | estoque: ${p.reserveQty}</div>`).join(''):'Nenhum produto com estoque disponível baixo na loja.';
-  if(el('dashRecentSales'))el('dashRecentSales').innerHTML=[...db.sales].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,8).map(s=>`<tr><td>${fmtDate(s.date)}</td><td>#${esc(s.number)}</td><td>${esc(s.payment)}</td><td>${money(s.total)}</td></tr>`).join('');
+  if(el('dashRecentSales'))el('dashRecentSales').innerHTML=[...db.sales].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,8).map(s=>`<tr><td>${fmtDate(s.date)}</td><td>#${esc(s.number)}</td><td>${esc(paymentLabel(s))}</td><td>${money(s.total)}</td></tr>`).join('');
 }
 function renderReports(){
   const start=el('reportStart'),end=el('reportEnd'),paymentEl=el('reportPayment');if(!start||!end||!paymentEl)return;
   if(!start.value&&!end.value){const now=new Date(),first=new Date(now.getFullYear(),now.getMonth(),1);start.value=localDate(first);end.value=localDate(now)}
   const a=start.value,b=end.value,pay=paymentEl.value;
   if(a&&b&&a>b){if(el('reportTable'))el('reportTable').innerHTML='<tr><td colspan="7">Período inválido: a data inicial é posterior à final.</td></tr>';return}
-  const filtered=db.sales.filter(s=>{const d=localDate(new Date(s.date));return d&&(!a||d>=a)&&(!b||d<=b)&&(!pay||s.payment===pay)});
+  const filtered=db.sales.filter(s=>{const d=localDate(new Date(s.date));return d&&(!a||d>=a)&&(!b||d<=b)&&saleHasPayment(s,pay)});
   const total=filtered.reduce((s,x)=>s+toNumber(x.total),0),items=filtered.reduce((s,x)=>s+safeItems(x.items).reduce((z,i)=>z+toInt(i.qty),0),0);
   if(el('reportTotal'))el('reportTotal').textContent=money(total);
   if(el('reportCount'))el('reportCount').textContent=filtered.length;
   if(el('reportTicket'))el('reportTicket').textContent=money(filtered.length?total/filtered.length:0);
   if(el('reportItems'))el('reportItems').textContent=items;
-  if(el('reportTable'))el('reportTable').innerHTML=[...filtered].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(s=>`<tr><td>${fmtDate(s.date)}</td><td>#${esc(s.number)}</td><td>${s.saleType==='encomenda'?'Encomenda':(s.saleType==='comanda'?'Comanda':'Balcão')}</td><td>${esc(s.customer||'-')}</td><td>${esc(s.payment)}</td><td>${safeItems(s.items).reduce((z,i)=>z+toInt(i.qty),0)}</td><td>${money(s.total)}</td></tr>`).join('');
+  if(el('reportTable'))el('reportTable').innerHTML=[...filtered].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(s=>`<tr><td>${fmtDate(s.date)}</td><td>#${esc(s.number)}</td><td>${s.saleType==='encomenda'?'Encomenda':(s.saleType==='comanda'?'Comanda':'Balcão')}</td><td>${esc(s.customer||'-')}</td><td>${esc(paymentLabel(s))}</td><td>${safeItems(s.items).reduce((z,i)=>z+toInt(i.qty),0)}</td><td>${money(s.total)}</td></tr>`).join('');
 }
 
 function saveExpense(){
