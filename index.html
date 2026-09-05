@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Sistema Lanchonete - Gestão</title>
+  <title>Ana Paula Lanches - Sistema de Gestão</title>
   <style>
     :root{
       --bg:#f6f7fb; --card:#fff; --text:#1f2937; --muted:#6b7280;
@@ -97,6 +97,10 @@
     .access-badge{display:inline-block;padding:4px 8px;border-radius:99px;font-size:11px;font-weight:800;background:#e0e7ff;color:#3730a3}
     .seller-panel{border:1px solid #c7d2fe;background:#eef2ff;border-radius:12px;padding:12px;margin-top:12px}
     .seller-panel strong{color:#3730a3}
+    .firebase-status{margin-top:10px;padding:8px 10px;border-radius:9px;background:#f3f4f6;color:#4b5563;font-size:11px;line-height:1.4;border:1px solid #e5e7eb}
+    .firebase-status.ok{background:#dcfce7;color:#166534;border-color:#86efac}
+    .firebase-status.warn{background:#fef3c7;color:#92400e;border-color:#fde68a}
+    .firebase-status.error{background:#fee2e2;color:#991b1b;border-color:#fecaca}
     @media(max-width:900px){
       aside{position:static;width:100%;height:auto}
       .app{display:block} main{margin-left:0;width:100%}
@@ -133,6 +137,7 @@
       <button type="submit" class="btn primary" style="width:100%;font-size:16px;padding:13px">Entrar</button>
     </form>
     <div id="defaultLoginHint" class="login-hint"><b>Primeiro acesso:</b> usuário <b>admin</b> e senha <b>1234</b>. Depois altere em Configurações → Acesso do administrador.</div>
+    <div id="firebaseLoginStatus" class="firebase-status warn">☁️ Firebase: conectando...</div>
   </div>
 </div>
 
@@ -151,6 +156,7 @@
     <div class="aside-session">
       <div class="user">Conectado como: <b id="loggedUser">admin</b><br><span id="loggedRole" class="access-badge">Administrador</span></div>
       <button type="button" class="logout-btn" onclick="logout()">↩ Sair do sistema</button>
+      <div id="firebaseStatus" class="firebase-status warn">☁️ Firebase: conectando...</div>
     </div>
   </aside>
 
@@ -501,7 +507,7 @@
         </div>
         <div class="spacer"></div>
         <button class="btn primary" onclick="saveAccessConfig()">Alterar login / senha do administrador</button>
-        <div class="security-note">Este HTML funciona somente no navegador e usa armazenamento local. O login bloqueia o uso normal do sistema, mas não substitui autenticação de servidor para uso público na internet.</div>
+        <div class="security-note">Os dados operacionais são sincronizados com o Cloud Firestore e também mantêm uma cópia local de contingência. As senhas dos usuários são armazenadas como hash; ainda assim, para exposição pública em larga escala, recomenda-se evoluir o login para Firebase Authentication com regras por perfil.</div>
       </div>
       <div class="spacer"></div>
       <div class="card">
@@ -526,7 +532,7 @@
       <div class="spacer"></div>
       <div class="card">
         <h2>Backup local</h2>
-        <p class="muted">Os dados ficam salvos neste navegador via localStorage. Faça backup periodicamente.</p>
+        <p class="muted">Os dados são sincronizados com o Firebase e mantêm uma cópia local de contingência neste navegador. O backup JSON continua disponível.</p>
         <div class="row no-print">
           <button class="btn secondary" onclick="exportBackup()">Exportar backup JSON</button>
           <div class="field"><label>Importar backup</label><input type="file" id="backupFile" accept=".json"></div>
@@ -537,10 +543,33 @@
   </main>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
 const LS_KEY='lanchonete_basico_v1';
 const AUTH_KEY='lanchonete_auth_v1';
 const SESSION_KEY='lanchonete_session_v1';
+
+// ===== FIREBASE ANA PAULA LANCHES =====
+const FIREBASE_CONFIG={
+  apiKey:'AIzaSyDxKueVeeIBZ5-jHY1eNks95cMYWQ6po6U',
+  authDomain:'ana-paula-lanches.firebaseapp.com',
+  projectId:'ana-paula-lanches',
+  storageBucket:'ana-paula-lanches.firebasestorage.app',
+  messagingSenderId:'663236860252',
+  appId:'1:663236860252:web:c646e88e7ca6610c6cc999',
+  measurementId:'G-7TQY7QR4BE'
+};
+const FIREBASE_SCHEMA_VERSION=1;
+let firestoreDB=null;
+let firebaseAuthTransport=null;
+let firebaseReady=false;
+let cloudDBDirty=false;
+let cloudAuthDirty=false;
+let cloudWriteChain=Promise.resolve();
+let cloudUnsubscribers=[];
+let cloudShadow={products:[],sales:[],expenses:[],kitchenOrders:[],config:null,users:[]};
 
 let db=loadDB();
 let auth=loadAuth();
@@ -565,6 +594,183 @@ function localDate(d=new Date()){
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function safeItems(items){return Array.isArray(items)?items:[]}
 function isOpenOrder(o){return !!o && o.status!=='finalizado' && o.status!=='cancelado'}
+
+function deepClone(v){return JSON.parse(JSON.stringify(v))}
+function jsonEqual(a,b){return JSON.stringify(a)===JSON.stringify(b)}
+function setFirebaseStatus(message,state='warn'){
+  ['firebaseStatus','firebaseLoginStatus'].forEach(id=>{
+    const node=el(id);if(!node)return;
+    node.textContent=`☁️ Firebase: ${message}`;
+    node.classList.remove('ok','warn','error');node.classList.add(state);
+  });
+}
+function persistLocalDB(){try{localStorage.setItem(LS_KEY,JSON.stringify(db))}catch(e){console.warn('Falha ao manter cópia local do banco:',e)}}
+function persistLocalAuth(){try{localStorage.setItem(AUTH_KEY,JSON.stringify(auth))}catch(e){console.warn('Falha ao manter cópia local de acessos:',e)}}
+
+function bytesToBase64(bytes){let s='';bytes.forEach(b=>s+=String.fromCharCode(b));return btoa(s)}
+function base64ToBytes(value){const s=atob(value);return Uint8Array.from(s,c=>c.charCodeAt(0))}
+async function derivePasswordHash(password,saltBase64,iterations=120000){
+  const enc=new TextEncoder();
+  const material=await crypto.subtle.importKey('raw',enc.encode(String(password)),'PBKDF2',false,['deriveBits']);
+  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:base64ToBytes(saltBase64),iterations,hash:'SHA-256'},material,256);
+  return bytesToBase64(new Uint8Array(bits));
+}
+async function setUserPassword(user,password){
+  const salt=new Uint8Array(16);crypto.getRandomValues(salt);
+  const iterations=120000;
+  user.passwordSalt=bytesToBase64(salt);
+  user.passwordIterations=iterations;
+  user.passwordHash=await derivePasswordHash(password,user.passwordSalt,iterations);
+  delete user.password;
+}
+async function verifyUserPassword(user,password){
+  if(user?.passwordHash&&user?.passwordSalt){
+    const hash=await derivePasswordHash(password,user.passwordSalt,toInt(user.passwordIterations,120000)||120000);
+    return hash===user.passwordHash;
+  }
+  return typeof user?.password==='string'&&user.password===password;
+}
+async function migrateLegacyPasswords(){
+  let changed=false;
+  for(const user of auth.users){
+    if(user.password&&!user.passwordHash){
+      const wasDefault=user.role==='admin'&&user.username==='admin'&&user.password==='1234';
+      await setUserPassword(user,user.password);
+      if(wasDefault)user.mustChangePassword=true;
+      changed=true;
+    }
+  }
+  if(changed)persistLocalAuth();
+}
+
+function collectionMap(list){return new Map((Array.isArray(list)?list:[]).map(item=>[String(item.id),item]))}
+function addCollectionDiff(ops,collectionName,current,previous){
+  const cur=collectionMap(current),prev=collectionMap(previous);
+  for(const [id,item] of cur){
+    if(!prev.has(id)||!jsonEqual(item,prev.get(id)))ops.push({type:'set',ref:firestoreDB.collection(collectionName).doc(id),data:deepClone(item)});
+  }
+  for(const [id] of prev){if(!cur.has(id))ops.push({type:'delete',ref:firestoreDB.collection(collectionName).doc(id)});}
+}
+async function commitCloudOps(ops){
+  for(let i=0;i<ops.length;i+=450){
+    const batch=firestoreDB.batch();
+    ops.slice(i,i+450).forEach(op=>op.type==='delete'?batch.delete(op.ref):batch.set(op.ref,op.data));
+    await batch.commit();
+  }
+}
+function snapshotArray(snapshot){return snapshot.docs.map(d=>({...d.data(),id:d.id}))}
+
+async function seedFirebaseFromLocal(){
+  setFirebaseStatus('criando estrutura inicial...','warn');
+  const ops=[];
+  (db.products||[]).forEach(x=>ops.push({type:'set',ref:firestoreDB.collection('products').doc(String(x.id)),data:deepClone(x)}));
+  (db.sales||[]).forEach(x=>ops.push({type:'set',ref:firestoreDB.collection('sales').doc(String(x.id)),data:deepClone(x)}));
+  (db.expenses||[]).forEach(x=>ops.push({type:'set',ref:firestoreDB.collection('expenses').doc(String(x.id)),data:deepClone(x)}));
+  (db.kitchenOrders||[]).forEach(x=>ops.push({type:'set',ref:firestoreDB.collection('kitchenOrders').doc(String(x.id)),data:deepClone(x)}));
+  ops.push({type:'set',ref:firestoreDB.collection('settings').doc('business'),data:deepClone(db.config)});
+  (auth.users||[]).forEach(x=>ops.push({type:'set',ref:firestoreDB.collection('users').doc(String(x.id)),data:deepClone(x)}));
+  await commitCloudOps(ops);
+  await firestoreDB.collection('system_meta').doc('app').set({schemaVersion:FIREBASE_SCHEMA_VERSION,initializedAt:firebase.firestore.FieldValue.serverTimestamp(),project:'Ana Paula Lanches'});
+  cloudShadow={products:deepClone(db.products),sales:deepClone(db.sales),expenses:deepClone(db.expenses),kitchenOrders:deepClone(db.kitchenOrders),config:deepClone(db.config),users:deepClone(auth.users)};
+}
+
+async function loadFirebaseSourceOfTruth(){
+  setFirebaseStatus('carregando dados...','warn');
+  const [productsSnap,salesSnap,expensesSnap,kitchenSnap,configSnap,usersSnap]=await Promise.all([
+    firestoreDB.collection('products').get(),
+    firestoreDB.collection('sales').get(),
+    firestoreDB.collection('expenses').get(),
+    firestoreDB.collection('kitchenOrders').get(),
+    firestoreDB.collection('settings').doc('business').get(),
+    firestoreDB.collection('users').get()
+  ]);
+  const raw={
+    products:snapshotArray(productsSnap),sales:snapshotArray(salesSnap),expenses:snapshotArray(expensesSnap),kitchenOrders:snapshotArray(kitchenSnap),
+    config:configSnap.exists?configSnap.data():db.config
+  };
+  db=normalizeDB(raw);
+  const cloudUsers=snapshotArray(usersSnap);
+  auth=normalizeAuth({users:cloudUsers.length?cloudUsers:auth.users});
+  await migrateLegacyPasswords();
+  persistLocalDB();persistLocalAuth();
+  cloudShadow={products:deepClone(db.products),sales:deepClone(db.sales),expenses:deepClone(db.expenses),kitchenOrders:deepClone(db.kitchenOrders),config:deepClone(db.config),users:deepClone(auth.users)};
+  updateAuthUI();renderAll();
+}
+
+function startFirebaseListeners(){
+  cloudUnsubscribers.forEach(fn=>{try{fn()}catch(e){}});cloudUnsubscribers=[];
+  const bind=(collectionName,key,normalizeFn)=>{
+    cloudUnsubscribers.push(firestoreDB.collection(collectionName).onSnapshot(snapshot=>{
+      const incoming=snapshotArray(snapshot);
+      const normalized=normalizeFn?normalizeFn(incoming):incoming;
+      db[key]=normalized;cloudShadow[key]=deepClone(normalized);persistLocalDB();renderAll();
+    },err=>{console.error(`Listener ${collectionName}:`,err);setFirebaseStatus('erro de sincronização','error')}));
+  };
+  bind('products','products',arr=>normalizeDB({products:arr,sales:[],expenses:[],kitchenOrders:[],config:db.config}).products);
+  bind('sales','sales',arr=>normalizeDB({products:[],sales:arr,expenses:[],kitchenOrders:[],config:db.config}).sales);
+  bind('expenses','expenses',arr=>normalizeDB({products:[],sales:[],expenses:arr,kitchenOrders:[],config:db.config}).expenses);
+  bind('kitchenOrders','kitchenOrders',arr=>normalizeDB({products:[],sales:[],expenses:[],kitchenOrders:arr,config:db.config}).kitchenOrders);
+  cloudUnsubscribers.push(firestoreDB.collection('settings').doc('business').onSnapshot(snapshot=>{
+    if(!snapshot.exists)return;db.config=normalizeDB({products:db.products,sales:db.sales,expenses:db.expenses,kitchenOrders:db.kitchenOrders,config:snapshot.data()}).config;
+    cloudShadow.config=deepClone(db.config);persistLocalDB();renderAll();
+  },err=>{console.error('Listener settings:',err);setFirebaseStatus('erro de sincronização','error')}));
+  cloudUnsubscribers.push(firestoreDB.collection('users').onSnapshot(async snapshot=>{
+    const incoming=snapshotArray(snapshot);if(!incoming.length)return;
+    auth=normalizeAuth({users:incoming});await migrateLegacyPasswords();cloudShadow.users=deepClone(auth.users);persistLocalAuth();updateAuthUI();renderSellerUsers();
+  },err=>{console.error('Listener users:',err);setFirebaseStatus('erro de sincronização','error')}));
+}
+
+async function syncDBToFirebase(){
+  if(!firebaseReady||!firestoreDB)return;
+  const ops=[];
+  addCollectionDiff(ops,'products',db.products,cloudShadow.products);
+  addCollectionDiff(ops,'sales',db.sales,cloudShadow.sales);
+  addCollectionDiff(ops,'expenses',db.expenses,cloudShadow.expenses);
+  addCollectionDiff(ops,'kitchenOrders',db.kitchenOrders,cloudShadow.kitchenOrders);
+  if(!jsonEqual(db.config,cloudShadow.config))ops.push({type:'set',ref:firestoreDB.collection('settings').doc('business'),data:deepClone(db.config)});
+  if(!ops.length)return;
+  setFirebaseStatus('salvando...','warn');await commitCloudOps(ops);
+  cloudShadow.products=deepClone(db.products);cloudShadow.sales=deepClone(db.sales);cloudShadow.expenses=deepClone(db.expenses);cloudShadow.kitchenOrders=deepClone(db.kitchenOrders);cloudShadow.config=deepClone(db.config);
+  await firestoreDB.collection('system_meta').doc('app').set({lastSyncAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+  setFirebaseStatus('sincronizado','ok');
+}
+async function syncAuthToFirebase(){
+  if(!firebaseReady||!firestoreDB)return;
+  const ops=[];addCollectionDiff(ops,'users',auth.users,cloudShadow.users);if(!ops.length)return;
+  setFirebaseStatus('salvando acessos...','warn');await commitCloudOps(ops);cloudShadow.users=deepClone(auth.users);setFirebaseStatus('sincronizado','ok');
+}
+function flushCloudQueue(){
+  if(!firebaseReady)return;
+  cloudWriteChain=cloudWriteChain.then(async()=>{
+    while(cloudDBDirty||cloudAuthDirty){
+      const doDB=cloudDBDirty,doAuth=cloudAuthDirty;cloudDBDirty=false;cloudAuthDirty=false;
+      if(doDB)await syncDBToFirebase();if(doAuth)await syncAuthToFirebase();
+    }
+  }).catch(err=>{console.error('Falha ao salvar no Firebase:',err);setFirebaseStatus('falha ao salvar; cópia local preservada','error')});
+}
+function queueCloudDBSync(){cloudDBDirty=true;flushCloudQueue()}
+function queueCloudAuthSync(){cloudAuthDirty=true;flushCloudQueue()}
+
+async function initFirebaseSync(){
+  try{
+    if(!window.firebase)throw new Error('SDK do Firebase não carregou. Verifique a conexão com a internet.');
+    const app=firebase.apps.length?firebase.app():firebase.initializeApp(FIREBASE_CONFIG);
+    firebaseAuthTransport=firebase.auth(app);
+    setFirebaseStatus('autenticando conexão...','warn');
+    try{await firebaseAuthTransport.signInAnonymously()}catch(authError){
+      const e=new Error('Ative o provedor Anônimo em Firebase → Authentication → Método de login.');e.cause=authError;throw e;
+    }
+    firestoreDB=firebase.firestore(app);
+    try{await firestoreDB.enablePersistence({synchronizeTabs:true})}catch(e){
+      if(!['failed-precondition','unimplemented'].includes(e?.code))console.warn('Persistência offline do Firestore:',e);
+    }
+    const meta=await firestoreDB.collection('system_meta').doc('app').get();
+    if(meta.exists)await loadFirebaseSourceOfTruth();else await seedFirebaseFromLocal();
+    firebaseReady=true;startFirebaseListeners();setFirebaseStatus('conectado e sincronizado','ok');flushCloudQueue();
+  }catch(e){
+    console.error('Firebase:',e,e?.cause||'');firebaseReady=false;setFirebaseStatus(e?.message||'não conectado; usando cópia local','error');
+  }
+}
 
 function defaultDB(){
   return {
@@ -670,11 +876,11 @@ function saveDB(){
   try{
     localStorage.setItem(LS_KEY,JSON.stringify(db));
     renderAll();
+    queueCloudDBSync();
     return true;
   }catch(e){
     console.error('Falha ao salvar banco local:',e);
-    alert('Não foi possível salvar os dados neste navegador. Verifique o armazenamento disponível. A última alteração foi desfeita.');
-    db=loadDB();
+    alert('Não foi possível salvar a cópia local dos dados neste navegador. Verifique o armazenamento disponível.');
     renderAll();
     return false;
   }
@@ -686,16 +892,20 @@ function defaultAuth(){
 function normalizeAuth(raw){
   // Migração automática do formato antigo {username,password} para múltiplos usuários.
   if(raw && typeof raw==='object' && typeof raw.username==='string' && typeof raw.password==='string'){
-    return {users:[{id:'admin',name:'Administrador',username:raw.username||'admin',password:raw.password||'1234',role:'admin',active:true}]};
+    return {users:[{id:'admin',name:'Administrador',username:raw.username||'admin',password:raw.password||'1234',role:'admin',active:true,mustChangePassword:(raw.username||'admin')==='admin'&&(raw.password||'1234')==='1234'}]};
   }
-  const users=Array.isArray(raw?.users)?raw.users.map((u,index)=>({
+  const users=Array.isArray(raw?.users)?raw.users.map(u=>({
     id:String(u?.id||uid()),
     name:String(u?.name||u?.username||'Usuário'),
     username:String(u?.username||'').trim(),
-    password:String(u?.password||''),
+    password:typeof u?.password==='string'?u.password:'',
+    passwordHash:String(u?.passwordHash||''),
+    passwordSalt:String(u?.passwordSalt||''),
+    passwordIterations:Math.max(10000,toInt(u?.passwordIterations,120000)),
+    mustChangePassword:u?.mustChangePassword===true,
     role:u?.role==='vendedor'?'vendedor':'admin',
     active:u?.active!==false
-  })).filter(u=>u.username&&u.password):[];
+  })).filter(u=>u.username&&(u.password||u.passwordHash)):[];
   if(!users.some(u=>u.role==='admin'))users.unshift(defaultAuth().users[0]);
   return {users};
 }
@@ -711,11 +921,11 @@ function loadAuth(){
   return a;
 }
 function saveAuth(){
-  try{localStorage.setItem(AUTH_KEY,JSON.stringify(auth));return true}
+  try{localStorage.setItem(AUTH_KEY,JSON.stringify(auth));queueCloudAuthSync();return true}
   catch(e){alert('Não foi possível salvar os usuários e senhas.');return false}
 }
 function adminUser(){return auth.users.find(u=>u.role==='admin')||auth.users[0]}
-function isDefaultAuth(){const a=adminUser();return a?.username==='admin'&&a?.password==='1234'}
+function isDefaultAuth(){const a=adminUser();return !!a&&(a.mustChangePassword===true||(a.username==='admin'&&a.password==='1234'))}
 function getSession(){
   try{
     const raw=sessionStorage.getItem(SESSION_KEY);
@@ -770,13 +980,14 @@ function updateAuthUI(){
     const p=el('loginPassword');if(p)p.value='';
   }
 }
-function login(event){
+async function login(event){
   event?.preventDefault();
   const username=(el('loginUsername')?.value||'').trim();
   const password=el('loginPassword')?.value||'';
   const error=el('loginError');
-  const user=auth.users.find(u=>u.active!==false&&u.username.toLowerCase()===username.toLowerCase()&&u.password===password);
-  if(user){
+  const user=auth.users.find(u=>u.active!==false&&u.username.toLowerCase()===username.toLowerCase());
+  const valid=user?await verifyUserPassword(user,password):false;
+  if(user&&valid){
     setLoggedIn(user);
     if(error){error.textContent='';error.style.display='none'}
     const initial=user.role==='vendedor'?'vendas':'dashboard';
@@ -799,7 +1010,7 @@ function logout(){
   document.querySelectorAll('nav button[data-page]').forEach(b=>b.style.display='block');
   updateAuthUI();
 }
-function saveAccessConfig(){
+async function saveAccessConfig(){
   if(!isAdmin()){alert('Apenas o administrador pode alterar acessos.');return}
   const admin=adminUser();
   const username=(el('authUsername')?.value||'').trim();
@@ -807,21 +1018,21 @@ function saveAccessConfig(){
   const next=el('authNewPassword')?.value||'';
   const confirmPassword=el('authConfirmPassword')?.value||'';
   if(username.length<3){alert('O usuário deve ter pelo menos 3 caracteres.');return}
-  if(current!==admin.password){alert('A senha atual está incorreta.');return}
+  if(!(await verifyUserPassword(admin,current))){alert('A senha atual está incorreta.');return}
   if(auth.users.some(u=>u.id!==admin.id&&u.username.toLowerCase()===username.toLowerCase())){alert('Este nome de usuário já está sendo utilizado.');return}
   if(next&&next.length<4){alert('A nova senha deve ter pelo menos 4 caracteres.');return}
   if(next!==confirmPassword){alert('A confirmação da nova senha não confere.');return}
-  const previous={...admin};
+  const previous=deepClone(admin);
   admin.username=username;
-  admin.password=next||admin.password;
-  if(!saveAuth()){Object.assign(admin,previous);return}
+  if(next){await setUserPassword(admin,next);admin.mustChangePassword=false}
+  if(!saveAuth()){Object.keys(admin).forEach(k=>delete admin[k]);Object.assign(admin,previous);return}
   el('authCurrentPassword').value='';
   el('authNewPassword').value='';
   el('authConfirmPassword').value='';
   updateAuthUI();
   alert('Login e senha do administrador atualizados com sucesso.');
 }
-function saveSellerUser(){
+async function saveSellerUser(){
   if(!isAdmin()){alert('Apenas o administrador pode cadastrar vendedores.');return}
   const id=el('sellerId')?.value||'';
   const name=(el('sellerName')?.value||'').trim();
@@ -835,9 +1046,9 @@ function saveSellerUser(){
   if(id){
     const user=auth.users.find(u=>u.id===id&&u.role==='vendedor');
     if(!user){alert('Vendedor não encontrado.');return}
-    user.name=name;user.username=username;if(password)user.password=password;
+    user.name=name;user.username=username;if(password)await setUserPassword(user,password);
   }else{
-    auth.users.push({id:uid(),name,username,password,role:'vendedor',active:true});
+    const user={id:uid(),name,username,role:'vendedor',active:true};await setUserPassword(user,password);auth.users.push(user);
   }
   if(!saveAuth()){auth=loadAuth();return}
   resetSellerForm();
@@ -1382,11 +1593,13 @@ function importBackup(){
   r.readAsText(f);
 }
 
-function init(){
+async function init(){
+  await migrateLegacyPasswords();
   updateAuthUI();
   renderAll();
   updatePaymentFields();
   updateOrderPaymentFields();
+  initFirebaseSync();
 }
 init();
 
