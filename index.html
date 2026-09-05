@@ -148,6 +148,54 @@
       body.print-expense #expenseDeclarationCard{display:block!important;padding:24px!important}
       body.print-expense #expenseDeclarationCard .no-print{display:none!important}
     }
+  
+
+    /* ===== TEMA ANA PAULA LANCHES — BRANCO GELO + ROSA ===== */
+    :root{
+      --bg:#f5f7f8;
+      --card:#ffffff;
+      --text:#3a3036;
+      --muted:#786a72;
+      --primary:#d94f88;
+      --primary2:#ec76a8;
+      --line:#edd4df;
+      --dark:#f2f4f5;
+    }
+    body{background:linear-gradient(135deg,#f7f9fa 0%,#f3f5f6 55%,#fff4f8 100%)}
+    aside{background:linear-gradient(180deg,#f8fafb 0%,#eef1f3 100%);color:#3a3036;border-right:1px solid #ead3dd;box-shadow:8px 0 28px rgba(150,72,105,.06)}
+    .brand{color:#b72f68}.brand small{color:#7c6f76}
+    nav button{color:#51434a}
+    nav button:hover,nav button.active{background:linear-gradient(135deg,#df5a91,#c93e79);color:#fff}
+    main{background:transparent}
+    .card{background:rgba(255,255,255,.94);border-color:#edd4df;box-shadow:0 5px 18px rgba(139,70,99,.07)}
+    input,select,textarea{background:#fff;color:#3a3036;border-color:#e8cbd8}
+    input:focus,select:focus,textarea:focus{outline:2px solid rgba(217,79,136,.16);border-color:#d94f88}
+    th{background:#fff6f9;color:#765363}
+    td,th{border-bottom-color:#f0dce5}
+    .primary{background:#d94f88;color:#fff}.primary:hover{background:#c83d78}
+    .secondary{background:#f0e7eb;color:#523e47}
+    .ok{background:#d94f88;color:#fff}
+    .kitchen-btn{background:#d94f88;color:#fff}.kitchen-btn:hover{background:#c83d78}
+    .pdv-send-btn{background:#b82f69;color:#fff}.pdv-send-btn:hover{background:#9f285b}
+    .kitchen-send-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .product-btn{border-color:#edd4df;background:#fff}
+    .product-btn:hover{border-color:#e578a7;box-shadow:0 5px 14px rgba(217,79,136,.12)}
+    .product-price,.order-preview-total{color:#c83d78}
+    .sale-type-btn.active,.mode-btn.active,.order-preview-card.active{border-color:#d94f88;background:#fff0f6;color:#a82e62}
+    .order-preview-card:hover{border-color:#e578a7;background:#fff7fa}
+    .order-select-box,.fulfillment-box{background:#fff3f8;border-color:#efbfd3}
+    .payment-box,.locked-cart{background:#faf7f8;border-color:#ead7df}
+    .order-note,.notice{background:#fff4f8;border-color:#efbfd3;color:#8d3158}
+    .login-screen{background:linear-gradient(135deg,#f4f6f7 0%,#ffffff 48%,#f9dbe8 130%)}
+    .login-logo{background:#fff0f6;color:#c83d78}
+    .login-hint{background:#fff3f8;border-color:#efbfd3;color:#8d3158}
+    .aside-session{border-top-color:#e3cbd6}.aside-session .user{color:#5a4b52}
+    .logout-btn{background:#fff;border-color:#dfc0ce;color:#9f285b}.logout-btn:hover{background:#fff0f6}
+    .seller-panel{background:#fff3f8;border-color:#efbfd3}.seller-panel strong{color:#a82e62}
+    .access-badge{background:#f7d9e6;color:#8e2856}
+    .firebase-status{background:#fff;border-color:#ead7df;color:#5f5258}
+    @media(max-width:560px){.kitchen-send-actions{grid-template-columns:1fr}}
+
   </style>
 </head>
 <body>
@@ -405,9 +453,10 @@
           <div class="cart-total"><span>Total prévio</span><span id="preorderTotal">R$ 0,00</span></div>
 
           <div class="spacer"></div>
-          <button class="btn kitchen-btn" style="width:100%;font-size:15px;padding:12px" onclick="savePreorder()">Salvar e enviar para preparação</button>
-          <div class="spacer"></div>
-          <button class="btn secondary" style="width:100%" onclick="resetPreorder()">Novo pedido</button>
+          <div class="kitchen-send-actions">
+            <button class="btn kitchen-btn" style="width:100%;font-size:15px;padding:12px" onclick="savePreorder('preparo')">Enviar para preparação</button>
+            <button class="btn pdv-send-btn" style="width:100%;font-size:15px;padding:12px" onclick="savePreorder('pdv')">Enviar para o PDV</button>
+          </div>
         </div>
       </div>
 
@@ -967,7 +1016,7 @@ function normalizeDB(raw){
       notes:String(o?.notes||''),
       items,
       total:Math.max(0,toNumber(o?.total,calcTotal)),
-      status:['preparo','pronto','finalizado','cancelado'].includes(o?.status)?o.status:'preparo',
+      status:['preparo','pronto','pdv','finalizado','cancelado'].includes(o?.status)?o.status:'preparo',
       sentAt:o?.sentAt||new Date().toISOString()
     };
   }):[];
@@ -1522,7 +1571,7 @@ function validatePreorderAvailability(){
   }
   return true;
 }
-function savePreorder(){
+function savePreorder(destination='preparo'){
   if(!preorderCart.length){alert('Adicione os produtos do pedido.');return}
   if(!validatePreorderAvailability())return;
   const customer=(el('preCustomer')?.value||'').trim();
@@ -1536,12 +1585,13 @@ function savePreorder(){
     if(!additional){alert('Informe os dados adicionais da encomenda.');el('preAdditional')?.focus();return}
     if(preorderFulfillment==='entrega'&&!address){alert('Informe o endereço de entrega.');el('preAddress')?.focus();return}
   }
+  const targetStatus=destination==='pdv'?'pdv':'preparo';
   const total=preorderCart.reduce((s,i)=>s+i.qty*i.price,0);
   const payload={
     customer,type:preorderType==='encomenda'?'encomenda':'mesa',table:'',
     fulfillment:preorderType==='encomenda'?preorderFulfillment:'',
     phone:preorderType==='encomenda'?phone:'',address:preorderType==='encomenda'&&preorderFulfillment==='entrega'?address:'',additional:preorderType==='encomenda'?additional:'',
-    notes,items:preorderCart.map(i=>({...i})),total,status:'preparo',updatedAt:new Date().toISOString()
+    notes,items:preorderCart.map(i=>({...i})),total,status:targetStatus,updatedAt:new Date().toISOString()
   };
   let savedOrder;
   if(editingPreorderId){
@@ -1557,8 +1607,13 @@ function savePreorder(){
   if(!saveDB())return;
   resetPreorder(false);
   const success=el('preorderSuccess');
-  if(success){success.textContent=`✓ Pedido salvo: ${savedName} — ${savedType} — #${savedOrder.number}. No PDV, pedidos adicionais com o mesmo nome serão reunidos na mesma finalização.`;success.style.display='block'}
-  el('kitchenOrders')?.scrollIntoView({behavior:'smooth',block:'start'});
+  if(success){
+    success.textContent=targetStatus==='pdv'
+      ?`✓ Pedido enviado diretamente para o PDV: ${savedName} — ${savedType} — #${savedOrder.number}. Ele já está disponível em Vendas > Fechar Comanda / Encomenda.`
+      :`✓ Pedido enviado para preparação: ${savedName} — ${savedType} — #${savedOrder.number}. Ele aparece abaixo em Comandas e encomendas abertas.`;
+    success.style.display='block';
+  }
+  if(targetStatus==='preparo')el('kitchenOrders')?.scrollIntoView({behavior:'smooth',block:'start'});
 }
 function editPreorder(id){
   const o=db.kitchenOrders.find(x=>x.id===id&&isOpenOrder(x));if(!o)return;
@@ -1587,7 +1642,9 @@ function cancelPreorder(id){
 }
 function renderKitchen(){
   const box=el('kitchenOrders');if(!box)return;
-  const open=db.kitchenOrders.filter(isOpenOrder),preparing=open.filter(o=>o.status==='preparo'),ready=open.filter(o=>o.status==='pronto');
+  const allOpen=db.kitchenOrders.filter(isOpenOrder);
+  const open=allOpen.filter(o=>o.status!=='pdv');
+  const preparing=open.filter(o=>o.status==='preparo'),ready=open.filter(o=>o.status==='pronto');
   if(el('kitchenPreparing'))el('kitchenPreparing').textContent=preparing.length;
   if(el('kitchenReady'))el('kitchenReady').textContent=ready.length;
   if(el('kitchenOpen'))el('kitchenOpen').textContent=open.length;
