@@ -94,6 +94,9 @@
     .logout-btn{width:100%;border:1px solid #4b5563;background:#111827;color:#fff;padding:10px 12px;border-radius:9px;cursor:pointer;font-weight:700;text-align:left}
     .logout-btn:hover{background:#1f2937}
     .security-note{font-size:12px;color:var(--muted);line-height:1.5;margin-top:10px}
+    .access-badge{display:inline-block;padding:4px 8px;border-radius:99px;font-size:11px;font-weight:800;background:#e0e7ff;color:#3730a3}
+    .seller-panel{border:1px solid #c7d2fe;background:#eef2ff;border-radius:12px;padding:12px;margin-top:12px}
+    .seller-panel strong{color:#3730a3}
     @media(max-width:900px){
       aside{position:static;width:100%;height:auto}
       .app{display:block} main{margin-left:0;width:100%}
@@ -129,7 +132,7 @@
       <div class="field"><label>Senha</label><input id="loginPassword" type="password" autocomplete="current-password" required placeholder="Digite sua senha"></div>
       <button type="submit" class="btn primary" style="width:100%;font-size:16px;padding:13px">Entrar</button>
     </form>
-    <div id="defaultLoginHint" class="login-hint"><b>Primeiro acesso:</b> usuário <b>admin</b> e senha <b>1234</b>. Depois altere em Configurações → Acesso do sistema.</div>
+    <div id="defaultLoginHint" class="login-hint"><b>Primeiro acesso:</b> usuário <b>admin</b> e senha <b>1234</b>. Depois altere em Configurações → Acesso do administrador.</div>
   </div>
 </div>
 
@@ -146,7 +149,7 @@
       <button data-page="config">⚙️ Configurações</button>
     </nav>
     <div class="aside-session">
-      <div class="user">Conectado como: <b id="loggedUser">admin</b></div>
+      <div class="user">Conectado como: <b id="loggedUser">admin</b><br><span id="loggedRole" class="access-badge">Administrador</span></div>
       <button type="button" class="logout-btn" onclick="logout()">↩ Sair do sistema</button>
     </div>
   </aside>
@@ -486,9 +489,9 @@
       </div>
       <div class="spacer"></div>
       <div class="card">
-        <h2>Acesso do sistema</h2>
+        <h2>Acesso do administrador</h2>
         <div class="row">
-          <div class="field"><label>Usuário</label><input id="authUsername" autocomplete="username"></div>
+          <div class="field"><label>Usuário administrador</label><input id="authUsername" autocomplete="username"></div>
           <div class="field"><label>Senha atual</label><input id="authCurrentPassword" type="password" autocomplete="current-password"></div>
         </div>
         <div class="spacer"></div>
@@ -497,8 +500,28 @@
           <div class="field"><label>Confirmar nova senha</label><input id="authConfirmPassword" type="password" autocomplete="new-password"></div>
         </div>
         <div class="spacer"></div>
-        <button class="btn primary" onclick="saveAccessConfig()">Alterar login / senha</button>
+        <button class="btn primary" onclick="saveAccessConfig()">Alterar login / senha do administrador</button>
         <div class="security-note">Este HTML funciona somente no navegador e usa armazenamento local. O login bloqueia o uso normal do sistema, mas não substitui autenticação de servidor para uso público na internet.</div>
+      </div>
+      <div class="spacer"></div>
+      <div class="card">
+        <h2>Usuários e permissões</h2>
+        <div class="seller-panel"><strong>Perfil Vendedor:</strong> ao entrar, o usuário verá somente <b>Vendas / PDV</b> e <b>Cozinha / Comandas</b>. Dashboard, estoque, relatórios, caixa e configurações ficam bloqueados.</div>
+        <div class="spacer"></div>
+        <input type="hidden" id="sellerId">
+        <div class="row">
+          <div class="field"><label>Nome da pessoa</label><input id="sellerName" placeholder="Ex.: Maria Silva"></div>
+          <div class="field"><label>Usuário</label><input id="sellerUsername" autocomplete="off" placeholder="Ex.: maria"></div>
+          <div class="field"><label>Senha</label><input id="sellerPassword" type="password" autocomplete="new-password" placeholder="Mínimo 4 caracteres"></div>
+          <div class="field"><label>Perfil</label><select id="sellerRole" disabled><option value="vendedor">Vendedor</option></select></div>
+        </div>
+        <div class="spacer"></div>
+        <div class="row">
+          <button class="btn primary" onclick="saveSellerUser()">Salvar vendedor</button>
+          <button class="btn secondary" onclick="resetSellerForm()">Novo / limpar</button>
+        </div>
+        <div class="spacer"></div>
+        <div class="table-wrap" style="max-height:320px"><table><thead><tr><th>Nome</th><th>Usuário</th><th>Perfil</th><th>Ações</th></tr></thead><tbody id="sellerUserTable"></tbody></table></div>
       </div>
       <div class="spacer"></div>
       <div class="card">
@@ -657,40 +680,90 @@ function saveDB(){
   }
 }
 
-function defaultAuth(){return {username:'admin',password:'1234'}}
+function defaultAuth(){
+  return {users:[{id:'admin',name:'Administrador',username:'admin',password:'1234',role:'admin',active:true}]};
+}
+function normalizeAuth(raw){
+  // Migração automática do formato antigo {username,password} para múltiplos usuários.
+  if(raw && typeof raw==='object' && typeof raw.username==='string' && typeof raw.password==='string'){
+    return {users:[{id:'admin',name:'Administrador',username:raw.username||'admin',password:raw.password||'1234',role:'admin',active:true}]};
+  }
+  const users=Array.isArray(raw?.users)?raw.users.map((u,index)=>({
+    id:String(u?.id||uid()),
+    name:String(u?.name||u?.username||'Usuário'),
+    username:String(u?.username||'').trim(),
+    password:String(u?.password||''),
+    role:u?.role==='vendedor'?'vendedor':'admin',
+    active:u?.active!==false
+  })).filter(u=>u.username&&u.password):[];
+  if(!users.some(u=>u.role==='admin'))users.unshift(defaultAuth().users[0]);
+  return {users};
+}
 function loadAuth(){
   try{
     const saved=JSON.parse(localStorage.getItem(AUTH_KEY));
-    if(saved && typeof saved.username==='string' && typeof saved.password==='string' && saved.username && saved.password){
-      return {username:saved.username,password:saved.password};
-    }
-  }catch(e){console.warn('Falha ao carregar acesso:',e)}
+    const normalized=normalizeAuth(saved);
+    localStorage.setItem(AUTH_KEY,JSON.stringify(normalized));
+    return normalized;
+  }catch(e){console.warn('Falha ao carregar acessos:',e)}
   const a=defaultAuth();
   try{localStorage.setItem(AUTH_KEY,JSON.stringify(a))}catch(e){}
   return a;
 }
 function saveAuth(){
   try{localStorage.setItem(AUTH_KEY,JSON.stringify(auth));return true}
-  catch(e){alert('Não foi possível salvar o novo login e senha.');return false}
+  catch(e){alert('Não foi possível salvar os usuários e senhas.');return false}
 }
-function isDefaultAuth(){return auth.username==='admin' && auth.password==='1234'}
-function isLoggedIn(){return sessionStorage.getItem(SESSION_KEY)==='1'}
-function setLoggedIn(value){
-  if(value)sessionStorage.setItem(SESSION_KEY,'1');
+function adminUser(){return auth.users.find(u=>u.role==='admin')||auth.users[0]}
+function isDefaultAuth(){const a=adminUser();return a?.username==='admin'&&a?.password==='1234'}
+function getSession(){
+  try{
+    const raw=sessionStorage.getItem(SESSION_KEY);
+    if(!raw)return null;
+    const data=JSON.parse(raw);
+    const user=auth.users.find(u=>u.id===data.userId&&u.active!==false);
+    return user||null;
+  }catch(e){return null}
+}
+function isLoggedIn(){return !!getSession()}
+function setLoggedIn(user){
+  if(user)sessionStorage.setItem(SESSION_KEY,JSON.stringify({userId:user.id,loginAt:new Date().toISOString()}));
   else sessionStorage.removeItem(SESSION_KEY);
+}
+function currentUser(){return getSession()}
+function isAdmin(){return currentUser()?.role==='admin'}
+function allowedPagesForCurrentUser(){return isAdmin()?['dashboard','vendas','cozinha','produtos','relatorios','caixa','config']:['vendas','cozinha']}
+function applyRoleAccess(){
+  const user=currentUser();
+  document.querySelectorAll('nav button[data-page]').forEach(btn=>{
+    const allowed=!!user&&allowedPagesForCurrentUser().includes(btn.dataset.page);
+    btn.style.display=allowed?'block':'none';
+  });
+  if(!user)return;
+  const active=document.querySelector('.page.active')?.id;
+  if(!allowedPagesForCurrentUser().includes(active)){
+    const initial=user.role==='vendedor'?'vendas':'dashboard';
+    document.querySelectorAll('nav button[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===initial));
+    document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===initial));
+  }
 }
 function updateAuthUI(){
   const login=el('loginScreen');
   const app=el('appShell');
-  const logged=isLoggedIn();
+  const user=currentUser();
+  const logged=!!user;
   if(login)login.hidden=logged;
   if(app)app.hidden=!logged;
   const userLabel=el('loggedUser');
-  if(userLabel)userLabel.textContent=auth.username;
+  if(userLabel)userLabel.textContent=user?`${user.name} (${user.username})`:'--';
+  const roleLabel=el('loggedRole');
+  if(roleLabel)roleLabel.textContent=user?.role==='vendedor'?'Vendedor':'Administrador';
   const hint=el('defaultLoginHint');
   if(hint)hint.style.display=isDefaultAuth()?'block':'none';
   const authUsername=el('authUsername');
-  if(authUsername)authUsername.value=auth.username;
+  const admin=adminUser();
+  if(authUsername&&admin)authUsername.value=admin.username;
+  if(logged)applyRoleAccess();
   if(!logged){
     const u=el('loginUsername');
     if(u){u.value='';setTimeout(()=>u.focus(),0)}
@@ -702,9 +775,13 @@ function login(event){
   const username=(el('loginUsername')?.value||'').trim();
   const password=el('loginPassword')?.value||'';
   const error=el('loginError');
-  if(username===auth.username && password===auth.password){
-    setLoggedIn(true);
+  const user=auth.users.find(u=>u.active!==false&&u.username.toLowerCase()===username.toLowerCase()&&u.password===password);
+  if(user){
+    setLoggedIn(user);
     if(error){error.textContent='';error.style.display='none'}
+    const initial=user.role==='vendedor'?'vendas':'dashboard';
+    document.querySelectorAll('nav button[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===initial));
+    document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===initial));
     updateAuthUI();
     renderAll();
     return false;
@@ -714,30 +791,87 @@ function login(event){
   return false;
 }
 function logout(){
-  setLoggedIn(false);
+  setLoggedIn(null);
   cart=[];
   preorderCart=[];
   currentKitchenOrderId='';
   editingPreorderId='';
+  document.querySelectorAll('nav button[data-page]').forEach(b=>b.style.display='block');
   updateAuthUI();
 }
 function saveAccessConfig(){
+  if(!isAdmin()){alert('Apenas o administrador pode alterar acessos.');return}
+  const admin=adminUser();
   const username=(el('authUsername')?.value||'').trim();
   const current=el('authCurrentPassword')?.value||'';
   const next=el('authNewPassword')?.value||'';
   const confirmPassword=el('authConfirmPassword')?.value||'';
   if(username.length<3){alert('O usuário deve ter pelo menos 3 caracteres.');return}
-  if(current!==auth.password){alert('A senha atual está incorreta.');return}
-  if(next && next.length<4){alert('A nova senha deve ter pelo menos 4 caracteres.');return}
+  if(current!==admin.password){alert('A senha atual está incorreta.');return}
+  if(auth.users.some(u=>u.id!==admin.id&&u.username.toLowerCase()===username.toLowerCase())){alert('Este nome de usuário já está sendo utilizado.');return}
+  if(next&&next.length<4){alert('A nova senha deve ter pelo menos 4 caracteres.');return}
   if(next!==confirmPassword){alert('A confirmação da nova senha não confere.');return}
-  const previous={...auth};
-  auth={username,password:next||auth.password};
-  if(!saveAuth()){auth=previous;return}
+  const previous={...admin};
+  admin.username=username;
+  admin.password=next||admin.password;
+  if(!saveAuth()){Object.assign(admin,previous);return}
   el('authCurrentPassword').value='';
   el('authNewPassword').value='';
   el('authConfirmPassword').value='';
   updateAuthUI();
-  alert('Login e senha atualizados com sucesso.');
+  alert('Login e senha do administrador atualizados com sucesso.');
+}
+function saveSellerUser(){
+  if(!isAdmin()){alert('Apenas o administrador pode cadastrar vendedores.');return}
+  const id=el('sellerId')?.value||'';
+  const name=(el('sellerName')?.value||'').trim();
+  const username=(el('sellerUsername')?.value||'').trim();
+  const password=el('sellerPassword')?.value||'';
+  if(name.length<2){alert('Informe o nome do vendedor.');return}
+  if(username.length<3){alert('O usuário deve ter pelo menos 3 caracteres.');return}
+  if(auth.users.some(u=>u.id!==id&&u.username.toLowerCase()===username.toLowerCase())){alert('Este nome de usuário já está sendo utilizado.');return}
+  if(!id&&password.length<4){alert('Informe uma senha com pelo menos 4 caracteres.');return}
+  if(id&&password&&password.length<4){alert('A nova senha deve ter pelo menos 4 caracteres.');return}
+  if(id){
+    const user=auth.users.find(u=>u.id===id&&u.role==='vendedor');
+    if(!user){alert('Vendedor não encontrado.');return}
+    user.name=name;user.username=username;if(password)user.password=password;
+  }else{
+    auth.users.push({id:uid(),name,username,password,role:'vendedor',active:true});
+  }
+  if(!saveAuth()){auth=loadAuth();return}
+  resetSellerForm();
+  renderSellerUsers();
+  alert(id?'Vendedor atualizado com sucesso.':'Vendedor criado com sucesso.');
+}
+function editSellerUser(id){
+  if(!isAdmin())return;
+  const user=auth.users.find(u=>u.id===id&&u.role==='vendedor');if(!user)return;
+  el('sellerId').value=user.id;
+  el('sellerName').value=user.name;
+  el('sellerUsername').value=user.username;
+  el('sellerPassword').value='';
+  el('sellerPassword').placeholder='Deixe em branco para manter a senha';
+  el('sellerName').focus();
+}
+function resetSellerForm(){
+  if(el('sellerId'))el('sellerId').value='';
+  if(el('sellerName'))el('sellerName').value='';
+  if(el('sellerUsername'))el('sellerUsername').value='';
+  if(el('sellerPassword')){el('sellerPassword').value='';el('sellerPassword').placeholder='Mínimo 4 caracteres'}
+}
+function deleteSellerUser(id){
+  if(!isAdmin())return;
+  const user=auth.users.find(u=>u.id===id&&u.role==='vendedor');if(!user)return;
+  if(!confirm(`Excluir o acesso do vendedor "${user.name}"?`))return;
+  auth.users=auth.users.filter(u=>u.id!==id);
+  if(saveAuth())renderSellerUsers();
+}
+function renderSellerUsers(){
+  const tb=el('sellerUserTable');if(!tb)return;
+  if(!isAdmin()){tb.innerHTML='';return}
+  const sellers=auth.users.filter(u=>u.role==='vendedor').sort((a,b)=>a.name.localeCompare(b.name));
+  tb.innerHTML=sellers.length?sellers.map(u=>`<tr><td><b>${esc(u.name)}</b></td><td>${esc(u.username)}</td><td><span class="access-badge">Vendedor</span></td><td><button class="btn secondary" onclick="editSellerUser('${u.id}')">Editar</button> <button class="btn danger" onclick="deleteSellerUser('${u.id}')">Excluir</button></td></tr>`).join(''):'<tr><td colspan="4" class="muted">Nenhum vendedor cadastrado.</td></tr>';
 }
 
 function nextNumber(list,width){
@@ -758,6 +892,7 @@ function availableStoreQty(productId,excludeOrderId=''){
 function showPage(pageId){
   const target=el(pageId);
   if(!target)return;
+  if(!allowedPagesForCurrentUser().includes(pageId)){alert('Seu perfil não possui acesso a esta área.');return}
   document.querySelectorAll('nav button[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===pageId));
   document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===pageId));
   renderAll();
@@ -782,6 +917,8 @@ function renderAll(){
   updatePDVModeUI();
   updatePreorderTypeUI();
   renderSelectedOrder();
+  renderSellerUsers();
+  if(isLoggedIn())applyRoleAccess();
 }
 
 function renderProducts(){
@@ -1211,7 +1348,9 @@ function renderConfig(){
   if(el('businessPhone'))el('businessPhone').value=db.config.phone||'';
   if(el('businessAddress'))el('businessAddress').value=db.config.address||'';
   const brand=document.querySelector('.brand');if(brand?.firstChild)brand.firstChild.nodeValue=(db.config.name||'Lanchonete')+' ';
-  if(el('authUsername')&&document.activeElement!==el('authUsername'))el('authUsername').value=auth.username;
+  const admin=adminUser();
+  if(el('authUsername')&&admin&&document.activeElement!==el('authUsername'))el('authUsername').value=admin.username;
+  renderSellerUsers();
 }
 function saveConfig(){
   const name=(el('businessName')?.value||'').trim();
