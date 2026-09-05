@@ -101,6 +101,13 @@
     .firebase-status.ok{background:#dcfce7;color:#166534;border-color:#86efac}
     .firebase-status.warn{background:#fef3c7;color:#92400e;border-color:#fde68a}
     .firebase-status.error{background:#fee2e2;color:#991b1b;border-color:#fecaca}
+    .support-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+    .support-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px}
+    .support-card h2{margin-bottom:8px}.support-list{margin:0;padding-left:20px;color:#4b5563;line-height:1.8}
+    .support-tech{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+    .support-tech>div{background:#f9fafb;border:1px solid var(--line);border-radius:10px;padding:12px}
+    .support-tech small{display:block;color:var(--muted);margin-bottom:4px}.support-tech b{word-break:break-word}
+    @media(max-width:900px){.support-grid,.support-tech{grid-template-columns:1fr}}
     @media(max-width:900px){
       aside{position:static;width:100%;height:auto}
       .app{display:block} main{margin-left:0;width:100%}
@@ -146,12 +153,13 @@
     <div class="brand">Lanchonete <small>Sistema básico de gestão</small></div>
     <nav>
       <button class="active" data-page="dashboard">📊 Dashboard</button>
-      <button data-page="vendas">🧾 Vendas / PDV</button>
       <button data-page="cozinha">🍔 Cozinha / Comandas</button>
+      <button data-page="vendas">🧾 Vendas / PDV</button>
       <button data-page="produtos">📦 Produtos e Estoque</button>
       <button data-page="relatorios">📈 Relatórios</button>
       <button data-page="caixa">💸 Saída de Caixa</button>
       <button data-page="config">⚙️ Configurações</button>
+      <button data-page="suporte">🛠️ Suporte e Serviços</button>
     </nav>
     <div class="aside-session">
       <div class="user">Conectado como: <b id="loggedUser">admin</b><br><span id="loggedRole" class="access-badge">Administrador</span></div>
@@ -512,7 +520,7 @@
       <div class="spacer"></div>
       <div class="card">
         <h2>Usuários e permissões</h2>
-        <div class="seller-panel"><strong>Perfil Vendedor:</strong> ao entrar, o usuário verá somente <b>Vendas / PDV</b> e <b>Cozinha / Comandas</b>. Dashboard, estoque, relatórios, caixa e configurações ficam bloqueados.</div>
+        <div class="seller-panel"><strong>Perfil Vendedor:</strong> ao entrar, o usuário verá somente <b>Cozinha / Comandas</b> e <b>Vendas / PDV</b>. Dashboard, estoque, relatórios, caixa, configurações e suporte ficam bloqueados.</div>
         <div class="spacer"></div>
         <input type="hidden" id="sellerId">
         <div class="row">
@@ -538,6 +546,40 @@
           <div class="field"><label>Importar backup</label><input type="file" id="backupFile" accept=".json"></div>
           <button class="btn primary" onclick="importBackup()">Importar</button>
         </div>
+      </div>
+    </section>
+
+    <section id="suporte" class="page">
+      <h1>Suporte e Serviços</h1>
+      <div class="support-grid">
+        <div class="support-card">
+          <h2>🛠️ Suporte do sistema</h2>
+          <p class="muted">Área destinada ao acompanhamento técnico do Sistema Ana Paula Lanches.</p>
+          <ul class="support-list">
+            <li>Suporte para acesso de administrador e vendedores</li>
+            <li>Verificação de sincronização com o Firebase</li>
+            <li>Auxílio em produtos, estoque, PDV e comandas</li>
+            <li>Correções em relatórios e saídas de caixa</li>
+            <li>Backup, restauração e manutenção do sistema</li>
+          </ul>
+        </div>
+        <div class="support-card">
+          <h2>☁️ Status técnico</h2>
+          <div id="supportFirebaseStatus" class="firebase-status warn">☁️ Firebase: verificando...</div>
+          <div class="support-tech">
+            <div><small>Projeto Firebase</small><b>ana-paula-lanches</b></div>
+            <div><small>Banco de dados</small><b>Cloud Firestore (default)</b></div>
+            <div><small>Autenticação técnica</small><b>Anônima</b></div>
+            <div><small>Backup local</small><b>Ativo como contingência</b></div>
+          </div>
+          <div class="spacer"></div>
+          <button class="btn primary no-print" onclick="testFirebaseSupport()">Testar conexão com Firebase</button>
+        </div>
+      </div>
+      <div class="spacer"></div>
+      <div class="card">
+        <h2>Serviços adicionais</h2>
+        <p class="muted">Esta área pode receber posteriormente contatos de suporte, período de garantia, assistência estendida, abertura de chamados e histórico de manutenções.</p>
       </div>
     </section>
   </main>
@@ -595,10 +637,25 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&l
 function safeItems(items){return Array.isArray(items)?items:[]}
 function isOpenOrder(o){return !!o && o.status!=='finalizado' && o.status!=='cancelado'}
 
+async function testFirebaseSupport(){
+  const node=el('supportFirebaseStatus');
+  try{
+    if(!firebaseDB||!firebase.auth().currentUser)throw new Error('Firebase ainda não autenticado.');
+    if(node){node.textContent='☁️ Firebase: testando conexão...';node.className='firebase-status warn'}
+    await firebaseDB.collection('system_meta').doc('main').get();
+    setFirebaseStatus('conectado e sincronizado','ok');
+    alert('Conexão com o Firebase confirmada com sucesso.');
+  }catch(e){
+    console.error('Teste Firebase:',e);
+    setFirebaseStatus('falha no teste de conexão','error');
+    alert('Não foi possível confirmar a conexão com o Firebase. Verifique a internet e as regras do Firestore.');
+  }
+}
+
 function deepClone(v){return JSON.parse(JSON.stringify(v))}
 function jsonEqual(a,b){return JSON.stringify(a)===JSON.stringify(b)}
 function setFirebaseStatus(message,state='warn'){
-  ['firebaseStatus','firebaseLoginStatus'].forEach(id=>{
+  ['firebaseStatus','firebaseLoginStatus','supportFirebaseStatus'].forEach(id=>{
     const node=el(id);if(!node)return;
     node.textContent=`☁️ Firebase: ${message}`;
     node.classList.remove('ok','warn','error');node.classList.add(state);
@@ -942,7 +999,7 @@ function setLoggedIn(user){
 }
 function currentUser(){return getSession()}
 function isAdmin(){return currentUser()?.role==='admin'}
-function allowedPagesForCurrentUser(){return isAdmin()?['dashboard','vendas','cozinha','produtos','relatorios','caixa','config']:['vendas','cozinha']}
+function allowedPagesForCurrentUser(){return isAdmin()?['dashboard','cozinha','vendas','produtos','relatorios','caixa','config','suporte']:['cozinha','vendas']}
 function applyRoleAccess(){
   const user=currentUser();
   document.querySelectorAll('nav button[data-page]').forEach(btn=>{
