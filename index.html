@@ -284,10 +284,25 @@
       <div class="spacer"></div>
 
       <div id="pdvCounterArea" class="pdv-layout">
-        <div class="card pdv-cart">
+        <div class="card">
+          <div class="row" style="align-items:center;justify-content:space-between">
+            <div>
+              <h2 style="margin-bottom:4px">Produtos cadastrados</h2>
+              <div class="muted">Selecione os produtos à esquerda. Os itens escolhidos serão enviados para o carrinho de finalização.</div>
+            </div>
+            <div class="field" style="max-width:240px;min-width:180px">
+              <label>Buscar produto</label>
+              <input id="pdvSearch" placeholder="Digite o nome..." oninput="renderPDVProducts()">
+            </div>
+          </div>
+          <div class="spacer"></div>
+          <div id="pdvProductGrid" class="product-grid"></div>
+        </div>
+
+        <div class="card pdv-cart order-checkout-card">
           <h2>Carrinho / Finalização</h2>
           <div id="cart"></div>
-          <div class="cart-total"><span>Total</span><span id="cartTotal">R$ 0,00</span></div>
+          <div class="cart-total"><span>Valor total</span><span id="cartTotal">R$ 0,00</span></div>
 
           <div class="spacer"></div>
           <div class="field">
@@ -297,42 +312,37 @@
 
           <div class="spacer"></div>
           <div class="payment-box">
-            <div class="field">
-              <label>Forma de pagamento</label>
-              <select id="salePayment" onchange="updatePaymentFields()">
-                <option>Dinheiro</option>
-                <option>Pix</option>
-                <option>Cartão Débito</option>
-                <option>Cartão Crédito</option>
-              </select>
+            <h2 style="font-size:15px;margin-bottom:10px">Pagamento — permite parcialidade</h2>
+            <div class="payment-split-row">
+              <div class="field">
+                <label>Tipo de pagamento</label>
+                <select id="counterPaymentMethod">
+                  <option>Dinheiro</option>
+                  <option>Pix</option>
+                  <option>Cartão Débito</option>
+                  <option>Cartão Crédito</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Valor pago</label>
+                <input id="counterPaymentAmount" type="number" min="0" step="0.01" placeholder="0,00" onkeydown="if(event.key==='Enter'){event.preventDefault();addCounterPayment()}">
+              </div>
+              <button type="button" class="btn primary" onclick="addCounterPayment()">Adicionar</button>
             </div>
             <div class="spacer"></div>
-            <div class="field" id="paidField">
-              <label>Valor pago</label>
-              <input id="salePaid" type="number" min="0" step="0.01" placeholder="0,00" oninput="updateChange()">
+            <button type="button" class="btn secondary" style="width:100%" onclick="addRemainingCounterPayment()">Adicionar valor restante</button>
+            <div id="counterPaymentList" style="margin-top:8px"></div>
+            <div class="payment-summary-grid">
+              <div><small>Total</small><b id="counterPaymentTotal">R$ 0,00</b></div>
+              <div><small>Pago</small><b id="counterPaymentPaid">R$ 0,00</b></div>
+              <div><small>Restante / Troco</small><b id="counterPaymentBalance">R$ 0,00</b></div>
             </div>
-            <div class="troco-box">Troco: <span id="saleChange">R$ 0,00</span></div>
           </div>
 
           <div class="spacer"></div>
           <button class="btn ok" style="width:100%;font-size:16px;padding:13px" onclick="finishSale()">Finalizar venda de balcão</button>
           <div class="spacer"></div>
-          <button class="btn secondary" style="width:100%" onclick="resetPDV()">Limpar</button>
-        </div>
-
-        <div class="card">
-          <div class="row" style="align-items:center;justify-content:space-between">
-            <div>
-              <h2 style="margin-bottom:4px">Produtos cadastrados</h2>
-              <div class="muted">Selecione os itens à direita para adicionar ao carrinho.</div>
-            </div>
-            <div class="field" style="max-width:240px;min-width:180px">
-              <label>Buscar produto</label>
-              <input id="pdvSearch" placeholder="Digite o nome..." oninput="renderPDVProducts()">
-            </div>
-          </div>
-          <div class="spacer"></div>
-          <div id="pdvProductGrid" class="product-grid"></div>
+          <button class="btn secondary" style="width:100%" onclick="resetPDV()">Limpar venda</button>
         </div>
       </div>
 
@@ -693,6 +703,7 @@ let cloudShadow={products:[],sales:[],expenses:[],kitchenOrders:[],config:null,u
 let db=loadDB();
 let auth=loadAuth();
 let cart=[];
+let counterPayments=[];
 let pdvMode='balcao';
 let currentOrderGroupKey='';
 let orderPayments=[];
@@ -1176,6 +1187,7 @@ async function login(event){
 function logout(){
   setLoggedIn(null);
   cart=[];
+  counterPayments=[];
   preorderCart=[];
   currentOrderGroupKey='';
   orderPayments=[];
@@ -1701,39 +1713,68 @@ function renderCart(){
     box.appendChild(d);
   });
   if(el('cartTotal'))el('cartTotal').textContent=money(cart.reduce((s,i)=>s+i.qty*i.price,0));
-  updateChange();
+  renderCounterPayments();
 }
-function updatePaymentFields(){
-  const payment=el('salePayment')?.value,paidField=el('paidField'),paidInput=el('salePaid');if(!paidField||!paidInput)return;
-  if(payment==='Dinheiro')paidField.style.display='flex';else{paidField.style.display='none';paidInput.value=''}
-  updateChange();
+function counterPaymentNumbers(){
+  const total=cart.reduce((s,i)=>s+toNumber(i.qty)*toNumber(i.price),0);
+  const received=counterPayments.reduce((s,p)=>s+toNumber(p.amount),0);
+  const remaining=Math.max(0,total-received);
+  const change=Math.max(0,received-total);
+  return {total,received,remaining,change};
 }
-function updateChange(){
-  const payment=el('salePayment')?.value,total=cart.reduce((s,i)=>s+i.qty*i.price,0),paid=toNumber(el('salePaid')?.value);
-  if(el('saleChange'))el('saleChange').textContent=money(payment==='Dinheiro'?Math.max(0,paid-total):0);
+function renderCounterPayments(){
+  const list=el('counterPaymentList');if(!list)return;
+  const n=counterPaymentNumbers();
+  list.innerHTML=counterPayments.length?counterPayments.map((p,idx)=>`<div class="payment-entry"><div><b>${esc(p.method)}</b><div class="muted">Parcela ${idx+1}</div></div><div><b>${money(p.amount)}</b> <button type="button" class="btn danger" style="padding:5px 8px;margin-left:6px" onclick="removeCounterPayment(${idx})">×</button></div></div>`).join(''):'<div class="muted">Nenhuma parcela adicionada. Ex.: R$ 20,00 Débito + R$ 10,00 Crédito.</div>';
+  if(el('counterPaymentTotal'))el('counterPaymentTotal').textContent=money(n.total);
+  if(el('counterPaymentPaid'))el('counterPaymentPaid').textContent=money(n.received);
+  if(el('counterPaymentBalance'))el('counterPaymentBalance').textContent=n.change>0?`Troco ${money(n.change)}`:money(n.remaining);
 }
+function addCounterPayment(){
+  if(!cart.length){alert('Adicione produtos ao carrinho antes de informar o pagamento.');return}
+  const method=el('counterPaymentMethod')?.value||'Dinheiro';
+  const amount=Number(el('counterPaymentAmount')?.value||0);
+  const n=counterPaymentNumbers();
+  if(!Number.isFinite(amount)||amount<=0){alert('Informe um valor pago maior que zero.');return}
+  if(n.remaining<=0){alert('O valor da venda já foi totalmente informado.');return}
+  if(method!=='Dinheiro'&&amount>n.remaining+0.009){alert(`Para ${method}, o valor não pode ultrapassar o restante de ${money(n.remaining)}.`);return}
+  counterPayments.push({method,amount:Math.round(amount*100)/100});
+  if(el('counterPaymentAmount'))el('counterPaymentAmount').value='';
+  renderCounterPayments();
+}
+function addRemainingCounterPayment(){
+  if(!cart.length){alert('Adicione produtos ao carrinho antes de informar o pagamento.');return}
+  const n=counterPaymentNumbers();if(n.remaining<=0){alert('Não há valor restante.');return}
+  const method=el('counterPaymentMethod')?.value||'Dinheiro';
+  counterPayments.push({method,amount:Math.round(n.remaining*100)/100});
+  if(el('counterPaymentAmount'))el('counterPaymentAmount').value='';
+  renderCounterPayments();
+}
+function removeCounterPayment(index){counterPayments.splice(index,1);renderCounterPayments()}
+function updatePaymentFields(){renderCounterPayments()}
+function updateChange(){renderCounterPayments()}
 function resetPDV(){
   cart=[];
+  counterPayments=[];
   if(el('saleCustomer'))el('saleCustomer').value='';
-  if(el('salePaid'))el('salePaid').value='';
+  if(el('counterPaymentAmount'))el('counterPaymentAmount').value='';
   renderCart();
+  renderCounterPayments();
 }
 function finishSale(){
   if(pdvMode!=='balcao'){alert('Comandas e encomendas devem ser criadas em Cozinha / Comandas e apenas finalizadas aqui.');return}
   if(!cart.length){alert('Adicione itens ao carrinho.');return}
   for(const i of cart){if(availableStoreQty(i.productId)<i.qty){alert(`Estoque disponível insuficiente para ${i.name}.`);renderPDVProducts();return}}
-  const total=cart.reduce((s,i)=>s+i.qty*i.price,0),payment=el('salePayment')?.value||'Dinheiro';
-  let paid=total,change=0;
-  if(payment==='Dinheiro'){
-    paid=Number(el('salePaid')?.value||0);
-    if(!Number.isFinite(paid)||paid<total){alert(`O valor pago é menor que o total da venda (${money(total)}).`);return}
-    change=paid-total;
-  }
+  const n=counterPaymentNumbers();
+  if(n.received+0.009<n.total){alert(`Ainda falta informar ${money(n.remaining)} no pagamento.`);return}
+  if(n.received>n.total+0.009&&!counterPayments.some(p=>p.method==='Dinheiro')){alert('Pagamento acima do total só é permitido quando houver parcela em dinheiro para cálculo de troco.');return}
+  const payments=counterPayments.map(p=>({method:p.method,amount:Math.round(toNumber(p.amount)*100)/100}));
+  const payment=[...new Set(payments.map(p=>p.method))].join(' + ');
   cart.forEach(i=>{const p=db.products.find(x=>x.id===i.productId);if(p)p.storeQty-=i.qty});
-  const sale={id:uid(),number:nextNumber(db.sales,5),date:new Date().toISOString(),customer:(el('saleCustomer')?.value||'').trim(),saleType:'balcao',phone:'',address:'',additional:'',kitchenNotes:'',kitchenOrderIds:[],payment,payments:[{method:payment,amount:paid}],paid,change,items:cart.map(i=>({...i})),total};
-  db.sales.push(sale);cart=[];
-  if(el('saleCustomer'))el('saleCustomer').value='';if(el('salePaid'))el('salePaid').value='';
-  if(saveDB())alert(`Venda ${sale.number} finalizada.\nTotal: ${money(total)}${payment==='Dinheiro'?`\nTroco: ${money(change)}`:''}`);
+  const sale={id:uid(),number:nextNumber(db.sales,5),date:new Date().toISOString(),customer:(el('saleCustomer')?.value||'').trim(),saleType:'balcao',phone:'',address:'',additional:'',kitchenNotes:'',kitchenOrderIds:[],payment,payments,paid:n.received,change:n.change,items:cart.map(i=>({...i})),total:n.total};
+  db.sales.push(sale);cart=[];counterPayments=[];
+  if(el('saleCustomer'))el('saleCustomer').value='';if(el('counterPaymentAmount'))el('counterPaymentAmount').value='';
+  if(saveDB())alert(`Venda ${sale.number} finalizada.\nTotal: ${money(n.total)}${n.change>0?`\nTroco: ${money(n.change)}`:''}`);
 }
 
 function renderDashboard(){
