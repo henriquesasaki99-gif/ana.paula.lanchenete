@@ -196,6 +196,78 @@
     .firebase-status{background:#fff;border-color:#ead7df;color:#5f5258}
     @media(max-width:560px){.kitchen-send-actions{grid-template-columns:1fr}}
 
+
+    /* ===== SUPORTE & SERVIÇOS — HS START DIGITAL | BRANCO GELO + AZUL ===== */
+    #suporte.active{
+      background:linear-gradient(145deg,#f8fafc 0%,#eef4fb 52%,#e7f0fb 100%);
+      border:1px solid #d7e3f1;
+      border-radius:22px;
+      padding:20px;
+      box-shadow:0 14px 38px rgba(8,46,91,.08);
+    }
+    #suporte h1{color:#071a33;margin-bottom:16px}
+    #suporte .support-blue-hero{
+      background:linear-gradient(135deg,#06172c 0%,#0a315e 58%,#0e5eaa 100%);
+      border:1px solid #174e84;
+      border-radius:20px;
+      padding:22px;
+      color:#fff;
+      position:relative;
+      overflow:hidden;
+      box-shadow:0 16px 34px rgba(7,34,68,.18);
+    }
+    #suporte .support-blue-hero:after{
+      content:"HS";position:absolute;right:20px;bottom:-28px;font-size:132px;line-height:1;font-weight:900;color:rgba(255,255,255,.06);pointer-events:none
+    }
+    #suporte .support-blue-hero h2{font-size:29px;margin:0 0 7px;color:#fff}
+    #suporte .support-blue-hero p{margin:0;max-width:860px;color:#dce9f8;line-height:1.55;position:relative;z-index:1}
+    #suporte .support-flyer-top{
+      margin-top:16px;background:#fbfdff;border:1px solid #cadbed;border-radius:20px;padding:15px;
+      box-shadow:0 12px 28px rgba(7,49,93,.09)
+    }
+    #suporte .support-flyer-heading{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+    #suporte .support-flyer-heading h2{margin:0;color:#082d58}
+    #suporte .support-flyer-heading span{font-size:12px;color:#456987;font-weight:700}
+    #suporte .support-flyer-wrap{background:#fff;border:1px solid #d6e2ef;border-radius:16px;padding:8px;overflow:hidden;max-width:980px;margin:0 auto}
+    #suporte .support-flyer-wrap img{display:block;width:100%;height:auto;border-radius:11px}
+    #suporte .support-blue-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;align-items:start}
+    #suporte .support-blue-card{
+      background:#fbfdff;border:1px solid #cbdced;border-radius:17px;padding:17px;color:#10263c;
+      box-shadow:0 8px 22px rgba(8,49,91,.07)
+    }
+    #suporte .support-blue-card h2,#suporte .support-blue-card h3{color:#082d58}
+    #suporte .support-blue-card .muted{color:#5d7184!important}
+    #suporte .support-panel-title{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+    #suporte .support-panel-title h2{margin-bottom:5px}
+    #suporte .support-status-card{background:#edf5fd;border:1px solid #b9d2eb;border-radius:14px;padding:14px;margin-top:13px}
+    #suporte .support-status-line{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+    #suporte .support-state{display:inline-flex;align-items:center;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:900}
+    #suporte .support-state.support-active{background:#d9eaff;color:#07457f;border:1px solid #87b8e8}
+    #suporte .support-state.support-expired{background:#dce6f1;color:#183b5d;border:1px solid #9cb8d1}
+    #suporte .support-status-badge{display:inline-flex;border-radius:999px;padding:6px 10px;background:#e2effc;color:#08477f;border:1px solid #acd0ef;font-size:11px;font-weight:900}
+    #suporte .support-small{font-size:12px;color:#5d7184;line-height:1.5}
+    #suporte .support-period{font-size:18px;font-weight:900;color:#083a6d;margin-top:2px}
+    #suporte .support-list-blue{display:flex;flex-direction:column;gap:9px;margin-top:13px}
+    #suporte .support-item-blue{background:#f2f7fc;border:1px solid #d0dfed;border-radius:12px;padding:12px;color:#18334e;line-height:1.45}
+    #suporte .support-item-blue strong{display:block;color:#082d58;margin-bottom:3px}
+    #suporte .support-contact-number{font-size:18px;font-weight:900;color:#0b4f90}
+    #suporte .support-actions-blue{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:14px}
+    #suporte .support-action-link{display:flex;align-items:center;justify-content:center;min-height:46px;padding:10px 12px;border-radius:10px;text-decoration:none;font-weight:800;text-align:center;border:1px solid #0d4d87;background:#0b4f90;color:#fff}
+    #suporte .support-action-link:hover{background:#083c70}
+    #suporte .support-action-link.light{background:#eef5fc;color:#0b4f90;border-color:#9fc3e5}
+    #suporte .support-action-link.light:hover{background:#dfeefb}
+    #suporte .support-tech{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:12px}
+    #suporte .support-tech>div{background:#f2f7fc;border:1px solid #d0dfed;border-radius:11px;padding:11px}
+    #suporte .support-tech small{display:block;color:#60788e;margin-bottom:4px}
+    #suporte .support-tech b{word-break:break-word;color:#082d58}
+    #suporte .firebase-status,#suporte .firebase-status.ok,#suporte .firebase-status.warn,#suporte .firebase-status.error{
+      background:#e8f2fc!important;color:#0b4f90!important;border-color:#a8c9e8!important
+    }
+    #suporte .support-test-btn{background:#0b4f90!important;color:#fff!important}
+    #suporte .support-test-btn:hover{background:#083c70!important}
+    @media(max-width:980px){#suporte .support-blue-grid{grid-template-columns:1fr}}
+    @media(max-width:620px){#suporte.active{padding:12px;border-radius:16px}#suporte .support-blue-hero{padding:17px}#suporte .support-blue-hero h2{font-size:24px}#suporte .support-actions-blue,#suporte .support-tech{grid-template-columns:1fr}}
+
   </style>
 </head>
 <body>
@@ -638,35 +710,97 @@
 
     <section id="suporte" class="page">
       <h1>Suporte e Serviços</h1>
-      <div class="support-grid">
-        <div class="support-card">
-          <h2>🛠️ Suporte do sistema</h2>
-          <p class="muted">Área destinada ao acompanhamento técnico do Sistema Ana Paula Lanches.</p>
-          <ul class="support-list">
-            <li>Suporte para acesso de administrador e vendedores</li>
-            <li>Verificação de sincronização com o Firebase</li>
-            <li>Auxílio em produtos, estoque, PDV e comandas</li>
-            <li>Correções em relatórios e saídas de caixa</li>
-            <li>Backup, restauração e manutenção do sistema</li>
-          </ul>
+
+      <div class="support-blue-hero">
+        <h2>💬 HS Start Digital — Suporte &amp; Serviços</h2>
+        <p>Central de atendimento do projeto <b>Ana Paula Lanches</b>. Consulte o período de garantia e auxílio, solicite suporte técnico e fale diretamente com a HS Start Digital para orçamentos, projetos adicionais ou assistência estendida.</p>
+      </div>
+
+      <div class="support-flyer-top">
+        <div class="support-flyer-heading">
+          <div><h2>HS Start Digital</h2><span>Criação de sites • Sistemas online • Marketing digital</span></div>
+          <span>Apresentação de serviços</span>
         </div>
-        <div class="support-card">
-          <h2>☁️ Status técnico</h2>
-          <div id="supportFirebaseStatus" class="firebase-status warn">☁️ Firebase: verificando...</div>
-          <div class="support-tech">
-            <div><small>Projeto Firebase</small><b>ana-paula-lanches</b></div>
-            <div><small>Banco de dados</small><b>Cloud Firestore (default)</b></div>
-            <div><small>Autenticação técnica</small><b>Anônima</b></div>
-            <div><small>Backup local</small><b>Ativo como contingência</b></div>
-          </div>
-          <div class="spacer"></div>
-          <button class="btn primary no-print" onclick="testFirebaseSupport()">Testar conexão com Firebase</button>
+        <div class="support-flyer-wrap">
+          <img id="supportFlyerImage" src="HS_Start_Digital_Flyer.png" alt="Flyer HS Start Digital">
         </div>
       </div>
-      <div class="spacer"></div>
-      <div class="card">
-        <h2>Serviços adicionais</h2>
-        <p class="muted">Esta área pode receber posteriormente contatos de suporte, período de garantia, assistência estendida, abertura de chamados e histórico de manutenções.</p>
+
+      <div class="support-blue-grid">
+        <div>
+          <div class="support-blue-card">
+            <div class="support-panel-title">
+              <div>
+                <h2>Status da garantia e auxílio</h2>
+                <p class="muted">O status é atualizado automaticamente conforme a data do dispositivo.</p>
+              </div>
+              <span id="supportStatusBadge" class="support-status-badge">Verificando...</span>
+            </div>
+            <div class="support-status-card">
+              <div class="support-status-line">
+                <span id="supportContractStatus" class="support-state">Verificando suporte...</span>
+              </div>
+              <div class="support-small">Período contratado de garantia e auxílio</div>
+              <div id="supportPeriodText" class="support-period">01/09/2026 a 16/09/2026</div>
+              <p id="supportStatusDescription" class="support-small" style="margin:9px 0 0"></p>
+            </div>
+          </div>
+
+          <div class="spacer"></div>
+
+          <div class="support-blue-card">
+            <h2>Atendimento HS Start Digital</h2>
+            <p class="muted">Entre em contato para suporte, novas funções, melhorias, integrações, projetos adicionais ou extensão da assistência do sistema.</p>
+            <div class="support-list-blue">
+              <div class="support-item-blue">
+                <strong>📱 WhatsApp para suporte e orçamentos</strong>
+                <span id="supportWhatsappText" class="support-contact-number">(13) 98210-5058</span>
+              </div>
+              <div class="support-item-blue">
+                <strong>✉️ E-mail</strong>
+                <span id="supportEmailText">henriquesasaki99@outlook.com</span>
+              </div>
+              <div class="support-item-blue">
+                <strong>🛠️ Projetos e serviços adicionais</strong>
+                <span>Alterações no sistema, novas funcionalidades, sites, sistemas online, automações, marketing digital e assistência estendida.</span>
+              </div>
+            </div>
+            <div class="support-actions-blue">
+              <a id="supportMainBtn" class="support-action-link" href="#" target="_blank" rel="noopener">Falar pelo WhatsApp</a>
+              <a id="supportBudgetBtn" class="support-action-link light" href="#" target="_blank" rel="noopener">Solicitar orçamento</a>
+              <a id="supportEmailBtn" class="support-action-link" href="mailto:henriquesasaki99@outlook.com">Enviar e-mail</a>
+              <a id="supportExtendedBtn" class="support-action-link light" href="#" target="_blank" rel="noopener">Assistência estendida</a>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="support-blue-card">
+            <h2>☁️ Status técnico do sistema</h2>
+            <p class="muted">Acompanhamento da conexão e da estrutura atual do Sistema Ana Paula Lanches.</p>
+            <div id="supportFirebaseStatus" class="firebase-status warn">☁️ Firebase: verificando...</div>
+            <div class="support-tech">
+              <div><small>Projeto Firebase</small><b>ana-paula-lanches</b></div>
+              <div><small>Banco de dados</small><b>Cloud Firestore (default)</b></div>
+              <div><small>Autenticação técnica</small><b>Anônima</b></div>
+              <div><small>Backup local</small><b>Ativo como contingência</b></div>
+            </div>
+            <div class="spacer"></div>
+            <button class="btn support-test-btn no-print" onclick="testFirebaseSupport()">Testar conexão com Firebase</button>
+          </div>
+
+          <div class="spacer"></div>
+
+          <div class="support-blue-card">
+            <h2>🧰 Cobertura de suporte do sistema</h2>
+            <div class="support-list-blue">
+              <div class="support-item-blue"><strong>Acessos</strong><span>Auxílio para administrador e vendedores.</span></div>
+              <div class="support-item-blue"><strong>Operação</strong><span>Produtos, estoque, cozinha, comandas, encomendas e PDV.</span></div>
+              <div class="support-item-blue"><strong>Financeiro</strong><span>Relatórios, vendas e saídas de caixa.</span></div>
+              <div class="support-item-blue"><strong>Dados</strong><span>Sincronização Firebase, backup, restauração e manutenção.</span></div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   </main>
@@ -774,6 +908,53 @@ async function testFirebaseSupport(){
     setFirebaseStatus('falha no teste de conexão','error');
     alert('Não foi possível confirmar a conexão com o Firebase. Verifique a internet e as regras do Firestore.');
   }
+}
+
+
+/* ===== HS START DIGITAL: REGRA DE SUPORTE DO PROJETO ANA PAULA LANCHES ===== */
+const SUPPORT_SERVICE_CONFIG={
+  whatsappNumber:'5513982105058',
+  whatsappDisplay:'(13) 98210-5058',
+  email:'henriquesasaki99@outlook.com',
+  guaranteeStart:'2026-09-01',
+  guaranteeEnd:'2026-09-16'
+};
+function supportDateFromISO(iso,endOfDay=false){const [y,m,d]=String(iso).split('-').map(Number);return endOfDay?new Date(y,m-1,d,23,59,59,999):new Date(y,m-1,d,0,0,0,0)}
+function supportFormatDateBR(iso){const [y,m,d]=String(iso).split('-');return `${d}/${m}/${y}`}
+function getSupportContractStatus(baseDate=new Date()){
+  const now=new Date(baseDate),start=supportDateFromISO(SUPPORT_SERVICE_CONFIG.guaranteeStart),end=supportDateFromISO(SUPPORT_SERVICE_CONFIG.guaranteeEnd,true),active=now>=start&&now<=end;
+  return active?{
+    active:true,
+    label:'Contratação em suporte',
+    stateClass:'support-active',
+    description:`Garantia e auxílio ativos até ${supportFormatDateBR(SUPPORT_SERVICE_CONFIG.guaranteeEnd)}. Durante este período, utilize o botão de suporte para solicitar auxílio relacionado ao projeto.`
+  }:{
+    active:false,
+    label:'Contratação com suporte expirado',
+    stateClass:'support-expired',
+    description:`A data atual está fora do período de garantia e auxílio contratado (${supportFormatDateBR(SUPPORT_SERVICE_CONFIG.guaranteeStart)} a ${supportFormatDateBR(SUPPORT_SERVICE_CONFIG.guaranteeEnd)}). Para novos atendimentos, solicite orçamento ou assistência estendida.`
+  };
+}
+function buildSupportWhatsappUrl(subject='suporte'){
+  const status=getSupportContractStatus();
+  const message=`Olá! Gostaria de atendimento da HS Start Digital.\n\nAssunto: ${subject}\nProjeto: Ana Paula Lanches\nStatus: ${status.label}\nPeríodo de garantia e auxílio: ${supportFormatDateBR(SUPPORT_SERVICE_CONFIG.guaranteeStart)} a ${supportFormatDateBR(SUPPORT_SERVICE_CONFIG.guaranteeEnd)}.\n\nGostaria de mais informações.`;
+  return `https://wa.me/${SUPPORT_SERVICE_CONFIG.whatsappNumber}?text=${encodeURIComponent(message)}`;
+}
+function renderSupportServices(){
+  if(!el('supportContractStatus'))return;
+  const status=getSupportContractStatus();
+  el('supportWhatsappText').textContent=SUPPORT_SERVICE_CONFIG.whatsappDisplay;
+  el('supportEmailText').textContent=SUPPORT_SERVICE_CONFIG.email;
+  el('supportPeriodText').textContent=`${supportFormatDateBR(SUPPORT_SERVICE_CONFIG.guaranteeStart)} a ${supportFormatDateBR(SUPPORT_SERVICE_CONFIG.guaranteeEnd)}`;
+  el('supportContractStatus').textContent=status.label;
+  el('supportContractStatus').className=`support-state ${status.stateClass}`;
+  el('supportStatusDescription').textContent=status.description;
+  el('supportStatusBadge').textContent=status.label;
+  el('supportMainBtn').textContent=status.active?'Solicitar suporte':'Contratar suporte';
+  el('supportMainBtn').href=buildSupportWhatsappUrl(status.active?'suporte dentro do período de garantia':'contratação de suporte após o período de garantia');
+  el('supportBudgetBtn').href=buildSupportWhatsappUrl('orçamento para projeto adicional');
+  el('supportExtendedBtn').href=buildSupportWhatsappUrl('assistência estendida');
+  el('supportEmailBtn').href=`mailto:${SUPPORT_SERVICE_CONFIG.email}?subject=${encodeURIComponent('Atendimento HS Start Digital - Ana Paula Lanches')}`;
 }
 
 function deepClone(v){return JSON.parse(JSON.stringify(v))}
@@ -1314,6 +1495,7 @@ function renderAll(){
   updatePreorderTypeUI();
   renderSelectedOrder();
   renderSellerUsers();
+  renderSupportServices();
   if(isLoggedIn())applyRoleAccess();
 }
 
